@@ -1,4 +1,4 @@
-export type CapabilityShape = 'gear' | 'mesh' | 'lattice' | 'strata' | 'arm' | 'rack';
+export type CapabilityShape = 'gear' | 'screens' | 'shield' | 'mesh' | 'lattice' | 'strata' | 'rack' | 'arm';
 
 export type Capability = {
   id: string;
@@ -6,142 +6,142 @@ export type Capability = {
   name: string;
   full: string;
   shape: CapabilityShape;
+  link: string;
   statement: string;
-  scope: string[];
+  challenge: string;
+  services: string[];
+  approach: string;
   technologies: string[];
-  problem: string;
-  outcome: string;
-  value: string;
+  deliverables: string[];
+  outcomes: string;
 };
 
 export const capabilities: Capability[] = [
   {
-    id: 'automation',
+    id: 'control',
     index: '01',
-    name: 'Automation',
-    full: 'Industrial Automation & OT Integration',
+    name: 'PLC, DCS & Control',
+    full: 'PLC, DCS & Control Engineering',
     shape: 'gear',
-    statement:
-      'Control systems engineered for deterministic behaviour, safe change and long service lives — from PLC logic to supervisory control.',
-    scope: [
-      'PLC / DCS programming, integration and migration',
-      'SCADA and HMI strategy, ISA-101 high-performance graphics',
-      'Alarm management, interlocks and process visibility',
-      'Control-system modernisation with staged cut-overs',
-      'Machine and line integration across vendors',
-    ],
-    technologies: ['IEC 61131-3', 'PLC / DCS', 'SCADA / HMI', 'ISA-88 / ISA-101', 'ISA-18.2', 'Drives & motion'],
-    problem: 'A line runs on undocumented logic and an obsolete SCADA; every change is slow, risky and depends on one person.',
-    outcome: 'A documented, modernised control layer with templated objects, a rationalised alarm system and defined interfaces.',
-    value: 'Lower change risk, faster commissioning and a control layer that is ready for data and further automation.',
+    link: '#automation',
+    statement: 'Control logic and process control engineered for deterministic behaviour, safe change and long service lives.',
+    challenge: 'Machines and processes run on logic that is undocumented, ageing or held by one person — so every change is slow and risky.',
+    services: ['PLC programming, modification and migration', 'DCS configuration and control modules', 'Sequences, interlocks, permissives and PID', 'Simulation, FAT, SAT and commissioning'],
+    approach: 'Specify first (FDS, I/O list, control narrative), build against IEC 61131-3 structure, test in simulation, then commission in staged steps.',
+    technologies: ['IEC 61131-3', 'ISA-88', 'PID control', 'Fieldbus & I/O', 'Simulation'],
+    deliverables: ['Functional design specification', 'Commented, structured control code', 'I/O list & cause-and-effect', 'FAT/SAT records'],
+    outcomes: 'Predictable machine and process behaviour, faster changes, and documentation the site team can maintain.',
+  },
+  {
+    id: 'scada',
+    index: '02',
+    name: 'SCADA, HMI & MES',
+    full: 'SCADA, HMI & MES',
+    shape: 'screens',
+    link: '#svc-scada',
+    statement: 'Supervision and production systems that give operators clarity and give the business reliable production data.',
+    challenge: 'Ageing SCADA, cluttered graphics and alarm floods — and production data that never reaches planning on time.',
+    services: ['SCADA architecture and development', 'High-performance HMI graphics and alarm management', 'Historisation, trends and reporting', 'MES integration with orders, genealogy and OEE'],
+    approach: 'Templated objects and ISA-101 graphic principles, an alarm philosophy per ISA-18.2, and ISA-95 based exchange with MES and ERP.',
+    technologies: ['SCADA / HMI', 'ISA-101', 'ISA-18.2', 'ISA-95 / B2MML', 'Historians'],
+    deliverables: ['SCADA application & object library', 'Alarm philosophy and rationalised alarm list', 'MES interface specification', 'Operator training material'],
+    outcomes: 'Operators see what matters; production performance reaches planning the same shift.',
+  },
+  {
+    id: 'security',
+    index: '03',
+    name: 'OT Cybersecurity',
+    full: 'OT Cybersecurity & Secure Infrastructure',
+    shape: 'shield',
+    link: '#security',
+    statement: 'Protecting industrial systems with security designed around safety, availability and operational continuity.',
+    challenge: 'Flat networks, unmanaged remote access and unknown assets — in systems that cannot simply be patched or rebooted.',
+    services: ['OT asset inventory and security assessment', 'Zones, conduits and industrial DMZ design', 'System hardening and secure remote access', 'Monitoring, backup and recovery readiness'],
+    approach: 'Discover before changing, segment by function and criticality, harden what can be hardened, monitor passively, and rehearse recovery.',
+    technologies: ['IEC 62443 principles', 'NIST SP 800-82', 'Industrial firewalls', 'Passive OT monitoring', 'Secure remote access'],
+    deliverables: ['Asset inventory & risk register', 'Target zone/conduit architecture', 'Firewall rule review', 'Recovery runbooks'],
+    outcomes: 'Reduced exposure, controlled access and a plant that can recover — without disrupting production.',
   },
   {
     id: 'connectivity',
-    index: '02',
-    name: 'Connectivity',
-    full: 'Industrial Data Engineering & Connectivity',
+    index: '04',
+    name: 'Connectivity & Data',
+    full: 'Industrial Connectivity & Data Engineering',
     shape: 'mesh',
-    statement:
-      'Reliable, contextualised data out of mixed-vendor, mixed-age equipment — governed so that every application can trust it.',
-    scope: [
-      'Brownfield connectivity and protocol interoperability',
-      'Asset models and ISA-95 hierarchies',
-      'Edge normalisation, buffering and data quality',
-      'Unified namespace and historian strategy',
-      'Time-series pipelines into analytics and enterprise systems',
-    ],
-    technologies: ['OPC UA', 'MQTT / Sparkplug B', 'Modbus · S7 · CIP', 'MTConnect', 'Historians', 'Time-series stores'],
-    problem: 'Data sits in dozens of machines and spreadsheets with no consistent names, units, timestamps or context.',
-    outcome: 'A governed data flow from asset to enterprise, with a namespace and asset model your teams build on.',
-    value: 'Every new use case starts from trusted data instead of a new integration project.',
+    link: '#connectivity',
+    statement: 'Reliable, contextualised data out of mixed-vendor, mixed-age equipment — governed so every application can trust it.',
+    challenge: 'Data sits in dozens of machines and spreadsheets with no consistent names, units, timestamps or context.',
+    services: ['Brownfield connectivity and protocol interoperability', 'Asset models and unified namespace', 'Edge normalisation and buffering', 'Historian and time-series pipelines'],
+    approach: 'Read-only acquisition at the edge, one asset model and naming convention, outbound flows through the DMZ.',
+    technologies: ['OPC UA', 'MQTT / Sparkplug B', 'Modbus · S7 · CIP', 'Historians', 'ISA-95 models'],
+    deliverables: ['Data architecture', 'Namespace & tag mapping', 'Edge deployment', 'Data quality rules'],
+    outcomes: 'Every new use case starts from trusted data instead of a new integration project.',
   },
   {
-    id: 'intelligence',
-    index: '03',
-    name: 'Intelligence',
-    full: 'Industrial AI, Machine Learning & Computer Vision',
+    id: 'ai',
+    index: '05',
+    name: 'Industrial AI & Analytics',
+    full: 'Industrial AI, ML & Advanced Analytics',
     shape: 'lattice',
-    statement:
-      'Models that detect, classify, predict and advise on industrial data — explainable to engineers and deployable on the line.',
-    scope: [
-      'Predictive maintenance and health indices',
-      'Computer vision for inspection and measurement',
-      'Statistical learning for process drift and quality',
-      'Root-cause and advisory analytics',
-      'AI-assisted decisions with humans in the loop',
-    ],
-    technologies: ['Time-series ML', 'Anomaly detection', 'Computer vision', 'SPC / Cpk', 'Edge inference', 'MLOps'],
-    problem: 'Inspection misses fine defects, and maintenance happens either too early or too late.',
-    outcome: 'A validated model on your data against an agreed accuracy target, with a path to run and monitor it in production.',
-    value: 'Decisions based on evidence — earlier warnings, fewer escapes and less wasted maintenance.',
+    link: '#intelligence',
+    statement: 'Models that detect, classify, predict and advise on industrial data — explainable to engineers and deployable on the line.',
+    challenge: 'Inspection misses fine defects, maintenance is mistimed, and analysis of losses takes weeks.',
+    services: ['Predictive maintenance and health indices', 'Computer vision inspection', 'Process drift, SPC and root-cause assistance', 'Production and energy analytics'],
+    approach: 'Agree the decision and accuracy target first, validate on site data, deploy with monitoring, keep a human in the loop.',
+    technologies: ['Time-series ML', 'Computer vision', 'SPC / Cpk', 'Edge inference', 'MLOps'],
+    deliverables: ['Validated model & evaluation report', 'Inference service', 'Monitoring & drift alerts', 'Operator-facing explanation'],
+    outcomes: 'Earlier warnings, fewer escapes and decisions based on evidence — with uncertainty made visible.',
   },
   {
     id: 'platforms',
-    index: '04',
-    name: 'Digital Platforms',
+    index: '06',
+    name: 'Applications & Platforms',
     full: 'Industrial Applications & Digital Platforms',
     shape: 'strata',
-    statement:
-      'Software that puts the right information in front of operators, engineers and managers — and closes the loop into work.',
-    scope: [
-      'Operations portals and industrial data applications',
-      'Role-based dashboards and shift handover tools',
-      'Workflow systems for maintenance and quality',
-      'Digital twins of lines and processes',
-      'Command and control layers across sites',
-    ],
-    technologies: ['Web applications', 'APIs & events', 'Time-series databases', 'Digital twins', 'Role-based access', 'Cloud & on-prem'],
-    problem: 'Teams reconcile production, quality and energy data by hand from systems that do not agree.',
-    outcome: 'A focused application around one operational decision, designed to extend rather than replace existing systems.',
-    value: 'Less time assembling information, more time acting on it — with one version of the truth.',
-  },
-  {
-    id: 'physical-ai',
-    index: '05',
-    name: 'Physical AI',
-    full: 'Digital Twins, Robotics & Physical AI',
-    shape: 'arm',
-    statement:
-      'Systems that perceive, reason and act in the physical world — simulated first, supervised always.',
-    scope: [
-      'Perception: vision, depth and scene understanding',
-      'Task reasoning and motion planning',
-      'Simulation and synthetic data before hardware',
-      'Robot integration and orchestration',
-      'Human-in-the-loop supervision and safety design',
-    ],
-    technologies: ['Simulation', 'ROS 2', 'Perception', 'Motion planning', 'Robot integration', 'Functional safety'],
-    problem: 'A task is repetitive, variable and ergonomically hard — too irregular for fixed automation.',
-    outcome: 'A simulated, tested concept with clear safety boundaries and success criteria before hardware is committed.',
-    value: 'Automation of variable tasks with risk retired early, in simulation, not on the shop floor.',
+    link: '#work',
+    statement: 'Software that puts the right information in front of operators, engineers and managers — and closes the loop into work.',
+    challenge: 'Teams reconcile production, quality and energy data by hand from systems that do not agree.',
+    services: ['Operations portals and industrial data apps', 'Maintenance and quality workflows', 'Shift handover and reporting', 'Digital twins of lines and processes'],
+    approach: 'Build around one operational decision, integrate with existing systems through APIs and the namespace, extend iteratively.',
+    technologies: ['Web applications', 'APIs & events', 'Time-series databases', 'Role-based access', 'Digital twins'],
+    deliverables: ['Application & source code', 'Integration interfaces', 'User & admin documentation', 'Support plan'],
+    outcomes: 'Less time assembling information, more time acting on it.',
   },
   {
     id: 'infrastructure',
-    index: '06',
-    name: 'Infrastructure',
-    full: 'Edge Computing & Industrial Infrastructure',
+    index: '07',
+    name: 'Edge, Cloud & Infrastructure',
+    full: 'Edge, Cloud & Industrial Infrastructure',
     shape: 'rack',
-    statement:
-      'The compute, networks and security zoning that let industrial software run reliably — and safely next to control.',
-    scope: [
-      'Edge runtimes and container orchestration',
-      'Security zoning and conduits (IEC 62443 principles)',
-      'Industrial DMZ and cloud connectivity patterns',
-      'Data platforms and deployment models',
-      'Observability, updates and remote operations',
-    ],
-    technologies: ['Edge compute', 'Containers', 'IEC 62443', 'Industrial DMZ', 'Observability', 'Hybrid cloud'],
-    problem: 'New software needs to run near machines without exposing the control network or creating unmanaged boxes.',
-    outcome: 'A segmented, monitored edge architecture with a defined update path and clear ownership.',
-    value: 'Industrial software that stays secure, observable and maintainable for years.',
+    link: '#connectivity',
+    statement: 'The compute, networks and deployment patterns that let industrial software run reliably — and safely next to control.',
+    challenge: 'New software needs to run near machines without exposing the control network or creating unmanaged boxes.',
+    services: ['Edge runtimes and container platforms', 'Industrial DMZ and hybrid-cloud patterns', 'Server and virtualisation design', 'Observability and update management'],
+    approach: 'Segmented placement, declared workloads, monitored hosts and a defined update path agreed with operations.',
+    technologies: ['Edge compute', 'Containers', 'Virtualisation', 'Industrial DMZ', 'Observability'],
+    deliverables: ['Infrastructure design', 'Deployment automation', 'Monitoring dashboards', 'Operations runbooks'],
+    outcomes: 'Industrial software that stays secure, observable and maintainable for years.',
+  },
+  {
+    id: 'physical-ai',
+    index: '08',
+    name: 'Physical AI & Robotics',
+    full: 'Physical AI, Robotics & Advanced Systems',
+    shape: 'arm',
+    link: '#innovation',
+    statement: 'Systems that perceive, reason and act in the physical world — simulated first, supervised always.',
+    challenge: 'A task is repetitive, variable and ergonomically hard — too irregular for fixed automation.',
+    services: ['Robot integration and cell design', 'Perception and scene understanding', 'Simulation and motion planning', 'Human-in-the-loop supervision design'],
+    approach: 'Prove the task in simulation, define confidence thresholds and safety boundaries, then integrate on hardware with the site.',
+    technologies: ['ROS 2', 'Simulation', 'Perception', 'Motion planning', 'Functional safety'],
+    deliverables: ['Simulation & feasibility report', 'Cell concept and safety concept inputs', 'Integration plan', 'Pilot results'],
+    outcomes: 'Automation of variable tasks with risk retired early, in simulation rather than on the shop floor.',
   },
 ];
 
 export const capabilitiesCopy = {
-  index: '04',
+  index: '06',
   eyebrow: 'Capabilities',
-  title: (
-    'Different disciplines. One engineering mindset.'
-  ),
-  lede: 'Industrial problems rarely respect organisational boundaries. We work across all six layers, so the solution holds together from the machine to the business.',
+  title: 'Different disciplines. One engineering mindset.',
+  lede: 'From a single PLC change to an enterprise data platform: eight disciplines, engineered to depend on each other — from the machine to the business.',
 };

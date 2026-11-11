@@ -8,7 +8,9 @@ import { GROUPS, type HeroStates } from '@/lib/particles/shapes';
 /** Mutable values written by the hero controllers, read every frame. */
 export type MorphStore = {
   morph: number; // 0..3
-  explode: number; // target 0..1 (component disassembly)
+  explode: number; // target 0..1 (component disassembly, click/keyboard only)
+  /** Pointer in normalised device coordinates; drives LOCAL particle dispersion. */
+  pointer: { x: number; y: number; active: boolean };
   /** DOM label elements, keyed by anchor id; positioned every frame. */
   labels: Record<string, HTMLElement | null>;
 };
@@ -20,6 +22,8 @@ const vertex = /* glsl */ `
   uniform float uSize;
   uniform float uPixelRatio;
   uniform float uExplode;
+  uniform vec3 uPointer;
+  uniform float uPointerStrength;
   uniform vec3 uOffsets[${4 * GROUPS}];
 
   attribute vec3 aP0;
@@ -64,7 +68,18 @@ const vertex = /* glsl */ `
     // Very small idle drift (disabled for reduced motion).
     p += uMotion * 0.012 * vec3(sin(uTime * 0.9 + aSeed * 31.0), cos(uTime * 0.7 + aSeed * 19.0), sin(uTime * 0.6 + aSeed * 11.0));
 
-    vec4 mv = modelViewMatrix * vec4(p, 1.0);
+    // Local dispersion: only particles near the pointer move, with smooth falloff.
+    // The object itself stays put; particles spring back as the strength decays.
+    vec4 world = modelMatrix * vec4(p, 1.0);
+    vec3 d = world.xyz - uPointer;
+    float dist = length(d.xy);
+    float fall = 1.0 - smoothstep(0.0, 0.8, dist);
+    fall *= fall;
+    vec3 jitter = vec3(sin(aSeed * 91.0), cos(aSeed * 57.0), sin(aSeed * 33.0) * 1.6);
+    vec3 dir = normalize(vec3(d.xy, 0.25) + jitter * 0.55);
+    world.xyz += dir * fall * uPointerStrength * (0.5 + aSeed * 0.35);
+
+    vec4 mv = viewMatrix * world;
     gl_Position = projectionMatrix * mv;
 
     float acc = mix(accA, accB, local);
@@ -111,13 +126,13 @@ type CamKey = { pos: [number, number, number]; look: [number, number, number] };
 
 // Wide screens: objects sit on the right; the left column holds the stage dialogue.
 const CAMERA_WIDE: CamKey[] = [
-  { pos: [2.4, 0.9, 8.8], look: [-2.3, -0.3, 0] },
-  { pos: [0.6, 1.2, 10.4], look: [-2.15, 0.15, 0] },
+  { pos: [1.2, 1.3, 9.8], look: [-2.2, -0.05, 0] },
+  { pos: [0.6, 1.2, 10.4], look: [-2.15, 0.0, 0] },
   { pos: [-0.8, 0.8, 9.4], look: [-2.3, 0.15, 0] },
   { pos: [0.3, 0.9, 10.2], look: [-2.2, 0.1, 0] },
 ];
 const CAMERA_NARROW: CamKey[] = [
-  { pos: [2.4, 0.2, 14.5], look: [0.5, -3.1, 0] },
+  { pos: [0.8, 0.6, 14.5], look: [0, -3.1, 0] },
   { pos: [0.4, 0.8, 13.8], look: [0, -3.2, 0] },
   { pos: [-0.6, 0.5, 13.2], look: [0, -3.0, 0] },
   { pos: [0.2, 0.6, 13.8], look: [0, -3.1, 0] },
@@ -127,6 +142,10 @@ const tmpA = new THREE.Vector3();
 const tmpB = new THREE.Vector3();
 const lookTarget = new THREE.Vector3();
 const proj = new THREE.Vector3();
+const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+const ray = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+const hit = new THREE.Vector3();
 
 export function ParticleMorphSystem({
   states,
@@ -140,7 +159,7 @@ export function ParticleMorphSystem({
   narrow: boolean;
 }) {
   const { camera, gl, size } = useThree();
-  const smooth = useRef({ morph: store.current?.morph ?? 0, explode: 0, px: 0, py: 0 });
+  const smooth = useRef({ morph: store.current?.morph ?? 0, explode: 0, px: 0, py: 0, strength: 0, vel: 0 });
 
   const geometry = useMemo(() => {
     const g = new THREE.BufferGeometry();
@@ -178,6 +197,8 @@ export function ParticleMorphSystem({
         uSize: { value: 17 },
         uPixelRatio: { value: 1 },
         uExplode: { value: 0 },
+        uPointer: { value: new THREE.Vector3(99, 99, 0) },
+        uPointerStrength: { value: 0 },
         uOffsets: { value: offs },
         uBase: { value: new THREE.Color('#e3ebf8') },
         uBlue: { value: new THREE.Color('#3d84f0') },
@@ -213,8 +234,16 @@ export function ParticleMorphSystem({
     const explodeTarget = reducedMotion ? Math.min(s.explode, 0.25) : s.explode;
     sm.explode += (explodeTarget - sm.explode) * (1 - Math.exp(-delta * (reducedMotion ? 30 : 3.2)));
 
+    // Spring–damper on the dispersion strength: smooth push, smooth return.
+    const want = s.pointer.active && !reducedMotion ? 1 : 0;
+    sm.vel += ((want - sm.strength) * 60 - sm.vel * 14) * delta;
+    sm.strength = Math.max(0, sm.strength + sm.vel * delta);
+    sm.px += (s.pointer.x - sm.px) * (1 - Math.exp(-delta * 10));
+    sm.py += (s.pointer.y - sm.py) * (1 - Math.exp(-delta * 10));
+
     const u = material.uniforms;
     u.uMorph.value = sm.morph;
+    u.uPointerStrength.value = sm.strength;
     u.uExplode.value = sm.explode;
     u.uTime.value = reducedMotion ? 0 : state.clock.elapsedTime;
     u.uMotion.value = reducedMotion ? 0 : 1;
@@ -231,11 +260,15 @@ export function ParticleMorphSystem({
     camera.position.copy(tmpA);
     lookTarget.fromArray(keys[seg].look).lerp(tmpB.fromArray(keys[seg + 1].look), e);
     camera.lookAt(lookTarget);
+    camera.updateMatrixWorld();
+    ndc.set(sm.px, sm.py);
+    ray.setFromCamera(ndc, camera);
+    if (ray.ray.intersectPlane(plane, hit)) u.uPointer.value.copy(hit);
 
     // Project label anchors of the visible state(s) into the DOM.
     states.anchors.forEach((list, si) => {
-      // S1 component labels only appear in the exploded view
-      const w = Math.max(0, 1 - Math.abs(sm.morph - si) * 2.4) * (si === 0 ? Math.min(1, sm.explode * 1.6) : 1);
+      // On narrow screens the scene sits behind the headline, so labels only show in the exploded view.
+      const w = Math.max(0, 1 - Math.abs(sm.morph - si) * 2.4) * (narrow ? sm.explode : 1);
       list.forEach((a) => {
         const el = s.labels[a.id];
         if (!el) return;
@@ -259,7 +292,7 @@ export function ParticleMorphSystem({
 
   return (
     <>
-      <mesh position={[-0.6, -2.09, 0]} rotation={[-Math.PI / 2, 0, 0]} material={glow}>
+      <mesh position={[-0.4, -1.78, 0]} rotation={[-Math.PI / 2, 0, 0]} material={glow}>
         <planeGeometry args={[10, 10]} />
       </mesh>
       <points geometry={geometry} material={material} frustumCulled={false} />

@@ -7,6 +7,7 @@ import { getQualityTier, hasWebGL, type QualityTier } from '@/lib/device';
 import { useInView } from '@/lib/hooks/useInView';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import { ChapterTransition } from './ChapterTransition';
+import { HumanoidFallback } from './robotics/HumanoidFallback';
 
 const HumanoidScene = dynamic(() => import('./robotics/HumanoidScene'), { ssr: false });
 type ViewId = 'front' | 'threeq' | 'side';
@@ -25,6 +26,7 @@ export function PhysicalAIExplorer() {
   const [view, setView] = useState<ViewId>('threeq');
   const [resetKey, setResetKey] = useState(0);
   const [points, setPoints] = useState<number | null>(null);
+  const [stalled, setStalled] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const near = useInView(stageRef, { rootMargin: '600px', once: true });
   const visible = useInView(stageRef);
@@ -34,6 +36,13 @@ export function PhysicalAIExplorer() {
   const labelEls = useRef<(HTMLElement | null)[]>([]);
   const barRef = useRef<HTMLSpanElement>(null);
   const st = innovationStages[idx];
+
+  // Watchdog: never leave an empty stage if the model is slow or fails.
+  useEffect(() => {
+    if (mode !== 'webgl' || points !== null) return;
+    const t = setTimeout(() => setStalled(true), 9000);
+    return () => clearTimeout(t);
+  }, [mode, points]);
 
   useEffect(() => {
     if (!near || mode !== 'pending') return;
@@ -116,11 +125,8 @@ export function PhysicalAIExplorer() {
                 onReady={setPoints}
               />
             )}
-            {mode === 'fallback' && (
-              <p className="absolute inset-0 flex items-center justify-center p-8 text-center text-mid">
-                The interactive 3D figure needs WebGL. Each stage is described alongside.
-              </p>
-            )}
+            {mode === 'fallback' && <HumanoidFallback reason="Static view · interactive 3D needs WebGL" />}
+            {mode === 'webgl' && (points === 0 || (stalled && points === null)) && <HumanoidFallback reason="Static view · the 3D model could not be loaded" />}
             {/* Projected annotations */}
             <div aria-hidden="true" className="pointer-events-none absolute inset-0">
               {st.labels.map((l, i) => (
@@ -137,7 +143,7 @@ export function PhysicalAIExplorer() {
                 </span>
               ))}
             </div>
-            {mode === 'webgl' && points === null && (
+            {mode === 'webgl' && points === null && !stalled && (
               <p className="t-label absolute inset-0 flex items-center justify-center text-mid">Assembling point cloud…</p>
             )}
             <span className="t-label pointer-events-none absolute top-4 left-4 text-lo">

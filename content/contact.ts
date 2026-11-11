@@ -11,7 +11,7 @@ export const interestAreas = [
 export type InterestArea = (typeof interestAreas)[number];
 
 export const contactCopy = {
-  index: '07',
+  index: '09',
   eyebrow: 'Contact',
   headline: 'Bring us the problem worth solving.',
   body: 'Tell us what you are trying to improve — a line, a process, a data problem, a robot idea. A short description is enough; we reply with questions, not a brochure.',

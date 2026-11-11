@@ -31,6 +31,7 @@ export default async function WorkDetail({ params }: { params: Promise<{ slug: s
   const related = capabilities.filter((c) => w.capabilities.includes(c.name));
   const idx = workItems.findIndex((x) => x.slug === w.slug);
   const next = workItems[(idx + 1) % workItems.length];
+  const wide = w.preview === 'control' || w.preview === 'security';
 
   return (
     <article data-surface="ink" className="surface-ink min-h-[100svh] px-[var(--gutter)] pt-[calc(var(--nav-h)+2rem)] pb-24">
@@ -47,15 +48,16 @@ export default async function WorkDetail({ params }: { params: Promise<{ slug: s
       </header>
 
       <div className="mt-12 grid gap-8 lg:grid-cols-12">
-        <section className="panel p-4 md:p-6 lg:col-span-7" aria-labelledby="preview-title">
+        <section className={`panel p-4 md:p-6 ${wide ? 'lg:col-span-12' : 'lg:col-span-7'}`} aria-labelledby="preview-title">
           <h2 id="preview-title" className="t-label mb-4 text-mid">
-            Interactive preview
+            {w.status === 'concept' ? 'System architecture · interactive' : 'Demonstration · interactive'}
           </h2>
           <WorkPreview item={w} />
         </section>
-        <div className="grid gap-6 lg:col-span-5">
+        <div className={`grid gap-6 ${wide ? 'lg:col-span-12 lg:grid-cols-2' : 'lg:col-span-5'}`}>
           {[
             ['Industrial problem', w.problem],
+            ['Engineering scope', w.scope],
             ['Engineering challenge', w.challenge],
             ['What was built', w.built],
           ].map(([k, v]) => (
@@ -78,7 +80,16 @@ export default async function WorkDetail({ params }: { params: Promise<{ slug: s
               </li>
             ))}
           </ol>
-          <h2 className="t-label mt-8 text-mid">Technology approach</h2>
+          <h2 className="t-label mt-8 text-mid">Deliverables</h2>
+          <ul className="mt-3 grid gap-1.5 sm:grid-cols-2">
+            {w.deliverables.map((d) => (
+              <li key={d} className="t-small flex gap-2.5 text-hi/90">
+                <span className="mt-[0.5rem] h-1.5 w-1.5 shrink-0 rounded-full bg-teal" aria-hidden="true" />
+                {d}
+              </li>
+            ))}
+          </ul>
+          <h2 className="t-label mt-8 text-mid">Technical components</h2>
           <ul className="mt-3 flex flex-wrap gap-1.5">
             {w.stack.map((s) => (
               <li key={s} className="t-mono-plain rounded-full border border-hi/12 px-2.5 py-1 text-[0.72rem] text-mid">
@@ -89,7 +100,7 @@ export default async function WorkDetail({ params }: { params: Promise<{ slug: s
         </section>
         <aside className="grid content-start gap-6 lg:col-span-5">
           <section className="rounded-2xl border border-teal/25 bg-teal/5 p-5">
-            <h2 className="t-label text-teal">Validation status</h2>
+            <h2 className="t-label text-teal">{w.status === 'case-study' ? 'Verified outcome' : 'Intended validation'}</h2>
             <p className="t-small mt-2 text-hi/90">{w.validation}</p>
             <p className="t-small mt-3 text-lo">
               <strong className="font-medium text-mid">{statusLabels[w.status]}:</strong> {statusMeaning[w.status]}

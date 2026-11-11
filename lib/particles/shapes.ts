@@ -9,7 +9,7 @@
  */
 
 import { mulberry32 } from '../random';
-import { connectedScene, integratedScene, intelligenceScene, type Anchor } from './heroScenes';
+import { advanceScene, engineerScene, secureScene, understandScene, type Anchor } from './heroScenes';
 import {
   boxEdges,
   boxSurface,
@@ -301,12 +301,7 @@ export function buildHeroStates(count: number): HeroStates {
   const nodeCount = Math.round(count * 0.13);
   const dustCount = Math.round(count * 0.05);
   const structCount = count - nodeCount - dustCount;
-  const scenes: (ShapeParts & { anchors: Anchor[] })[] = [
-    { ...armParts({ at: [-0.6, 0, 0], s: 1 }), anchors: ARM_ANCHORS },
-    connectedScene(),
-    intelligenceScene(),
-    integratedScene(),
-  ];
+  const scenes: (ShapeParts & { anchors: Anchor[] })[] = [engineerScene(), secureScene(), understandScene(), advanceScene()];
 
   const positions: Float32Array[] = [];
   const accents: Float32Array[] = [];
@@ -343,7 +338,7 @@ export function buildHeroStates(count: number): HeroStates {
     cx /= cn;
     cy /= cn;
     cz /= cn;
-    const fixed = si === 0 ? [7] : [4, 7];
+    const fixed = [7];
     for (let g = 0; g < GROUPS; g++) {
       if (!n[g] || fixed.includes(g)) continue;
       const gx = sum[g * 3] / n[g] - cx;
@@ -351,10 +346,10 @@ export function buildHeroStates(count: number): HeroStates {
       const gz = sum[g * 3 + 2] / n[g] - cz;
       const o = (si * GROUPS + g) * 3;
       // S1 (the arm) separates along its kinematic chain; scenes spread by layer
-      const k = si === 0 ? 0.48 : 0.45;
+      const k = 0.45;
       offsets[o] = gx * k;
       offsets[o + 1] = gy * k;
-      offsets[o + 2] = gz * k + (si === 0 ? 0.08 : 0.18);
+      offsets[o + 2] = gz * k + 0.18;
     }
     positions.push(pos);
     accents.push(acc);
@@ -369,5 +364,5 @@ export function buildHeroStates(count: number): HeroStates {
 
 /** Label anchors for every hero state, without sampling any geometry. */
 export function heroAnchors(): Anchor[][] {
-  return [ARM_ANCHORS, connectedScene().anchors, intelligenceScene().anchors, integratedScene().anchors];
+  return [engineerScene().anchors, secureScene().anchors, understandScene().anchors, advanceScene().anchors];
 }

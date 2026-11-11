@@ -74,7 +74,7 @@ export const innovationStages: InnovationStage[] = [
 ];
 
 export const innovationCopy = {
-  index: '05',
+  index: '07',
   eyebrow: 'Physical AI',
   title: 'The next frontier is physical.',
   lede: 'AI is moving from screens into machines that perceive and act. This is the loop we are researching and building toward — explore each stage on the figure.',

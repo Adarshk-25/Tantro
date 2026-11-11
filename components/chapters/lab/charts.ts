@@ -679,6 +679,55 @@ function energy(ctx: Ctx, { w, h, phase, k }: DrawArgs) {
   if (phase === 2) callout(ctx, X(4 * 26), Y(actual(4 * 26)), '+38 kW at zero output', 26, -44, ease(k));
 }
 
+function utility(ctx: Ctx, { w, h, phase, k }: DrawArgs) {
+  const f = area(w, h, 50);
+  grid(ctx, f, 8, 4);
+  txt(ctx, 'COMPRESSED AIR · demand vs running capacity (m³/min, 24 h)', f.x, f.y - 10);
+  const N = 96;
+  const X = (i: number) => f.x + (i / N) * f.w;
+  const Y = (v: number) => f.y + f.h - (v / 36) * f.h;
+  const demand = (i: number) => {
+    const hr = (i / 4) % 24;
+    const prod = hr >= 6 && hr < 22 ? 1 : 0;
+    return 9 + prod * (14 + Math.sin(hr * 0.9) * 3) + noise(i, 4) * 1.2;
+  };
+  const staged = (i: number) => {
+    const d = demand(i) * 1.12;
+    return d <= 12 ? 12 : d <= 24 ? 24 : 33;
+  };
+  // demand area
+  ctx.fillStyle = 'rgba(226,234,246,0.08)';
+  ctx.beginPath();
+  ctx.moveTo(X(0), Y(0));
+  for (let i = 0; i <= N; i++) ctx.lineTo(X(i), Y(demand(i)));
+  ctx.lineTo(X(N), Y(0));
+  ctx.closePath();
+  ctx.fill();
+  const dl: [number, number][] = [];
+  for (let i = 0; i <= N; i++) dl.push([X(i), Y(demand(i))]);
+  line(ctx, dl, COL.hi, 1.3);
+  // current: all three compressors loaded/unloading all day
+  line(ctx, [[f.x, Y(33)], [f.x + f.w, Y(33)]], COL.alert, 1.2, [4, 4]);
+  txt(ctx, 'today: C1+C2+C3 always running (33)', f.x + f.w, Y(33) - 6, COL.alert, 'right', 9.5);
+  if (phase >= 1) {
+    const r = phase === 1 ? ease(k) : 1;
+    const st: [number, number][] = [];
+    for (let i = 0; i <= N * r; i++) {
+      st.push([X(i), Y(staged(i))]);
+      if (i < N) st.push([X(i + 1), Y(staged(i))]);
+    }
+    line(ctx, st, COL.sig, 1.6);
+    if (r === 1) txt(ctx, 'staged plan (demand × 1.12 margin)', X(N * 0.04), Y(12) - 8, COL.sig, 'left', 9.5);
+  }
+  if (phase === 2) {
+    const a = ease(k);
+    ctx.fillStyle = `rgba(46,199,158,${0.18 * a})`;
+    for (let i = 0; i < N; i++) ctx.fillRect(X(i), Y(33), X(i + 1) - X(i) + 0.5, Y(staged(i)) - Y(33));
+    callout(ctx, X(10), Y(12), 'SP 0.126 → 0.109 kWh/m³ (simulated)', 30, -60, a);
+  }
+  ['00', '06', '12', '18', '24'].forEach((t, j) => txt(ctx, t, X((j * N) / 4), f.y + f.h + 16, COL.lo, 'center', 9));
+}
+
 export function drawChart(kind: ChartKind, ctx: Ctx, a: DrawArgs) {
   switch (kind) {
     case 'anomaly':
@@ -707,5 +756,7 @@ export function drawChart(kind: ChartKind, ctx: Ctx, a: DrawArgs) {
       return guidance(ctx, a);
     case 'energy':
       return energy(ctx, a);
+    case 'utility':
+      return utility(ctx, a);
   }
 }

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { nav } from '@/content/site';
+import { journeys, nav } from '@/content/site';
 import { useActiveChapter, useSurfaceUnderNav } from './useActiveChapter';
 
 const hrefChapter = (href: string) => (href.startsWith('/#') ? href.slice(2) : null);
@@ -28,6 +28,7 @@ export function SiteNav() {
   const surface = useSurfaceUnderNav();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [svcOpen, setSvcOpen] = useState(false);
   const menuBtn = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
 
@@ -100,21 +101,69 @@ export function SiteNav() {
           <ul className="hidden items-center gap-8 lg:flex">
             {nav.map((item, i) => {
               const current = isCurrent(item.href);
+              const num = (
+                <span
+                  className={`t-mono-plain text-[0.62rem] transition-colors ${current ? 'text-signal' : onBone ? 'text-onlight-mid' : 'text-lo'} group-hover:text-signal`}
+                  aria-hidden="true"
+                >
+                  0{i + 1}
+                </span>
+              );
+              if (item.label === 'Services')
+                return (
+                  <li
+                    key={item.href}
+                    className="relative"
+                    onMouseEnter={() => setSvcOpen(true)}
+                    onMouseLeave={() => setSvcOpen(false)}
+                    onKeyDown={(e) => e.key === 'Escape' && setSvcOpen(false)}
+                    onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node) && setSvcOpen(false)}
+                  >
+                    <button
+                      type="button"
+                      aria-expanded={svcOpen}
+                      aria-controls="services-menu"
+                      onClick={(e) => setSvcOpen((o) => (e.detail > 0 ? true : !o))} // pointer clicks follow hover (and touch's emulated hover) so they never close what hover just opened; keyboard toggles
+                      className="group link-signal flex items-baseline gap-1.5 text-[0.88rem] font-medium"
+                    >
+                      {num}
+                      {item.label}
+                      <span aria-hidden="true" className={`text-[0.7rem] transition-transform ${svcOpen ? 'rotate-180' : ''}`}>
+                        ▾
+                      </span>
+                    </button>
+                    <div
+                      id="services-menu"
+                      hidden={!svcOpen}
+                      className="absolute top-full left-1/2 w-[min(40rem,80vw)] -translate-x-1/2 pt-4"
+                    >
+                      <div className="panel !rounded-2xl !bg-ink-900/95 p-3 text-hi backdrop-blur-xl">
+                        <p className="t-label px-3 pt-1 pb-2 text-lo">What do you need?</p>
+                        <ul className="grid grid-cols-2 gap-1">
+                          {journeys.map((j) => (
+                            <li key={j.href}>
+                              <Link
+                                href={j.href}
+                                onClick={() => setSvcOpen(false)}
+                                className="block rounded-xl px-3 py-2.5 transition-colors hover:bg-hi/5 focus-visible:bg-hi/5"
+                              >
+                                <span className="block text-[0.92rem] font-medium text-hi">{j.label}</span>
+                                <span className="block text-[0.78rem] text-mid">{j.text}</span>
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                        <Link href="/#capabilities" onClick={() => setSvcOpen(false)} className="t-label mt-1 block rounded-xl px-3 py-2 text-signal hover:bg-hi/5">
+                          All eight capabilities →
+                        </Link>
+                      </div>
+                    </div>
+                  </li>
+                );
               return (
                 <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    aria-current={current ? 'true' : undefined}
-                    className="group link-signal flex items-baseline gap-1.5 text-[0.88rem] font-medium"
-                  >
-                    <span
-                      className={`t-mono-plain text-[0.62rem] transition-colors ${
-                        current ? 'text-signal' : onBone ? 'text-onlight-mid' : 'text-lo'
-                      } group-hover:text-signal`}
-                      aria-hidden="true"
-                    >
-                      0{i + 1}
-                    </span>
+                  <Link href={item.href} aria-current={current ? 'true' : undefined} className="group link-signal flex items-baseline gap-1.5 text-[0.88rem] font-medium">
+                    {num}
                     {item.label}
                   </Link>
                 </li>
@@ -151,7 +200,7 @@ export function SiteNav() {
         aria-modal="true"
         aria-label="Site menu"
         hidden={!open}
-        className="fixed inset-0 z-40 bg-ink-950 px-[var(--gutter)] pt-[calc(var(--nav-h)+2rem)] lg:hidden"
+        className="fixed inset-0 z-40 overflow-y-auto bg-ink-950 px-[var(--gutter)] pt-[calc(var(--nav-h)+1.5rem)] pb-10 lg:hidden"
       >
         <ul className="flex flex-col">
           {nav.map((item, i) => (
@@ -161,9 +210,20 @@ export function SiteNav() {
                 onClick={() => setOpen(false)}
                 className="flex items-baseline justify-between py-4 text-hi transition-colors hover:text-signal-soft"
               >
-                <span className="t-display-condensed text-[2.3rem]">{item.label}</span>
+                <span className="t-display-condensed text-[2.1rem]">{item.label}</span>
                 <span className="t-mono text-lo">0{i + 1}</span>
               </Link>
+              {item.label === 'Services' && (
+                <ul className="mb-3 grid gap-0.5">
+                  {journeys.map((j) => (
+                    <li key={j.href}>
+                      <Link href={j.href} onClick={() => setOpen(false)} className="block rounded-lg px-2 py-1.5 text-[0.95rem] text-mid hover:text-hi">
+                        {j.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </li>
           ))}
         </ul>

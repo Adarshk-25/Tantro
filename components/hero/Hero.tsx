@@ -26,7 +26,7 @@ export function Hero() {
   const stepRefs = useRef<(HTMLLIElement | null)[]>([]);
   const counterRef = useRef<HTMLSpanElement>(null);
   const cueRef = useRef<HTMLDivElement>(null);
-  const store = useRef<MorphStore>({ morph: 0, explode: 0, labels: {} });
+  const store = useRef<MorphStore>({ morph: 0, explode: 0, labels: {}, pointer: { x: 0, y: 0, active: false } });
   const explodeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fullRef = useRef(false);
 
@@ -116,18 +116,19 @@ export function Hero() {
   }, []);
   useScrollStory(sectionRef, onProgress);
 
-  // Hover preview: a subtle separation while the pointer rests over the model.
+  // Pointer interaction: hover disperses nearby particles; click/tap toggles the exploded view.
   useEffect(() => {
     const el = stickyRef.current;
     if (!el) return;
+    // Pointer → local particle dispersion (the object itself never moves).
     const move = (e: PointerEvent) => {
-      if (e.pointerType === 'touch' || fullRef.current) return;
       const r = el.getBoundingClientRect();
-      const overModel = narrow ? e.clientY - r.top < r.height * 0.55 : e.clientX - r.left > r.width * 0.46;
-      const inside = e.clientY >= r.top && e.clientY <= r.bottom;
-      store.current.explode = inside && overModel ? 0.14 : 0;
+      const p = store.current.pointer;
+      p.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+      p.y = -(((e.clientY - r.top) / r.height) * 2 - 1);
+      p.active = e.clientY >= r.top && e.clientY <= r.bottom && e.pointerType !== 'touch';
     };
-    const leave = () => !fullRef.current && (store.current.explode = 0);
+    const leave = () => (store.current.pointer.active = false);
     const click = (e: MouseEvent) => {
       if ((e.target as HTMLElement).closest('a,button,[role="button"]')) return;
       const r = el.getBoundingClientRect();
@@ -176,7 +177,7 @@ export function Hero() {
         <div className="pointer-events-none relative z-10 flex h-full flex-col px-[var(--gutter)] pt-[calc(var(--nav-h)+1.25rem)] pb-7">
           <div className="t-label hidden items-center gap-4 text-mid lg:flex">
             <span className="hairline-gradient h-px w-10" aria-hidden="true" />
-            <span>Automation · Connectivity · Intelligence · Physical AI</span>
+            <span>{hero.storyline}</span>
           </div>
 
           <div className="relative mt-auto max-w-[40rem] lg:max-w-[min(44vw,40rem)]">

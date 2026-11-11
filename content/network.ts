@@ -342,7 +342,7 @@ export const scenarios: Scenario[] = [
 ];
 
 export const networkCopy = {
-  index: '02',
+  index: '04',
   eyebrow: 'Connectivity',
   title: 'Make systems speak.',
   lede: 'Industrial data is fragmented across vendors, protocols and decades. We design the architecture that turns it into structured, governed, usable intelligence — without compromising control. Choose a scenario.',

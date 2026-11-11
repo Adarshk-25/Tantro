@@ -2,6 +2,8 @@ import { Hero } from '@/components/hero/Hero';
 import { ChapterRail } from '@/components/nav/ChapterRail';
 import { MachineStoryExplorer } from '@/components/chapters/MachineStoryExplorer';
 import { ConnectivityExplorer } from '@/components/chapters/ConnectivityExplorer';
+import { AutomationChapter } from '@/components/chapters/AutomationChapter';
+import { SecurityChapter } from '@/components/chapters/SecurityChapter';
 import { DecisionLab } from '@/components/chapters/DecisionLab';
 import { CapabilityExplorer } from '@/components/chapters/CapabilityExplorer';
 import { PhysicalAIExplorer } from '@/components/chapters/PhysicalAIExplorer';
@@ -27,6 +29,8 @@ export default function Home() {
       <ChapterRail />
       <Hero />
       <MachineStoryExplorer />
+      <AutomationChapter />
+      <SecurityChapter />
       <ConnectivityExplorer />
       <DecisionLab />
       <CapabilityExplorer />

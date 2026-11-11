@@ -389,7 +389,6 @@ function World({
       m.uniforms.uDim.value += ((stage === 'supervision' ? 0.82 : 1) - m.uniforms.uDim.value) * (1 - Math.exp(-dt * 4));
       m.uniforms.uPixelRatio.value = gl.getPixelRatio();
     });
-    human.occluderMat.uniforms.uPixelRatio.value = gl.getPixelRatio();
     W.floorMat.uniforms.uPR.value = gl.getPixelRatio();
     const headMat = human.materials[PART.head].uniforms;
     headMat.uScan.value = stage === 'perception' ? 1 : 0;
@@ -399,11 +398,16 @@ function World({
     const o = orbit.current;
     o.az += (o.target - o.az) * (1 - Math.exp(-dt * 3));
     o.el += (o.elTarget - o.el) * (1 - Math.exp(-dt * 3));
+    // Framing derived from the model's actual bounds (plus the work shelf beside it).
+    const b = human.bounds;
+    const cy = (b.min.y + b.max.y) / 2;
+    const halfH = ((b.max.y - b.min.y) / 2) * 1.14;
+    const halfW = Math.max(b.max.x - b.min.x, 0.6) * 0.5 + 0.42;
     const aspect = size.width / Math.max(1, size.height);
     const tanH = Math.tan(((FOV / 2) * Math.PI) / 180);
-    const dist = Math.max(1.06 / tanH, 0.92 / (tanH * aspect));
-    camera.position.set(Math.sin(o.az) * Math.cos(o.el) * dist, TARGET_Y + Math.sin(o.el) * dist, Math.cos(o.az) * Math.cos(o.el) * dist);
-    camera.lookAt(0.12, TARGET_Y, 0);
+    const dist = Math.max(halfH / tanH, halfW / (tanH * aspect)) + 0.3;
+    camera.position.set(Math.sin(o.az) * Math.cos(o.el) * dist, cy + Math.sin(o.el) * dist, Math.cos(o.az) * Math.cos(o.el) * dist);
+    camera.lookAt(0.12, cy, 0);
 
     // Screen-space callouts
     labels.forEach((l, i) => {

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { statusLabels, workCopy, workItems, type WorkStatus } from '@/content/work';
+import { statusLabels, workCategories, workCopy, workItems, type WorkStatus } from '@/content/work';
 import { ChapterTransition } from './ChapterTransition';
 import { WorkFigure } from './WorkFigure';
 
@@ -25,29 +25,44 @@ function Badge({ status }: { status: WorkStatus }) {
 
 export function EngineeringWork() {
   const [filter, setFilter] = useState<Filter>('all');
+  const [cat, setCat] = useState<string>('all');
 
   // Restore the filter from the URL (back/forward, returning from a project).
   useEffect(() => {
     const read = () => {
-      const v = new URLSearchParams(window.location.search).get('work');
+      const q = new URLSearchParams(window.location.search);
+      const v = q.get('work');
       setFilter(isFilter(v) ? v : 'all');
+      const c = q.get('cat');
+      setCat(c && (workCategories as readonly string[]).includes(c) ? c : 'all');
     };
     read();
     window.addEventListener('popstate', read);
     return () => window.removeEventListener('popstate', read);
   }, []);
 
-  const choose = (f: Filter) => {
-    setFilter(f);
+  const sync = (f: Filter, c: string) => {
     const url = new URL(window.location.href);
     if (f === 'all') url.searchParams.delete('work');
     else url.searchParams.set('work', f);
+    if (c === 'all') url.searchParams.delete('cat');
+    else url.searchParams.set('cat', c);
     url.hash = 'work';
     window.history.replaceState(window.history.state, '', url);
   };
+  const choose = (f: Filter) => {
+    setFilter(f);
+    sync(f, cat);
+  };
+  const chooseCat = (c: string) => {
+    setCat(c);
+    sync(filter, c);
+  };
 
-  const items = workItems.filter((w) => filter === 'all' || w.status === filter);
-  const count = (f: Filter) => (f === 'all' ? workItems.length : workItems.filter((w) => w.status === f).length);
+  const inCat = (w: (typeof workItems)[number]) => cat === 'all' || w.category === cat;
+  const items = workItems.filter((w) => (filter === 'all' || w.status === filter) && inCat(w));
+  const count = (f: Filter) => workItems.filter((w) => (f === 'all' || w.status === f) && inCat(w)).length;
+  const query = new URLSearchParams({ ...(filter !== 'all' ? { from: filter } : {}), ...(cat !== 'all' ? { cat } : {}) }).toString();
 
   return (
     <ChapterTransition
@@ -64,7 +79,8 @@ export function EngineeringWork() {
       lede={workCopy.body}
     >
       <div className="flex flex-1 flex-col gap-6">
-        <div role="group" aria-label="Filter by status" className="no-scrollbar -mx-[var(--gutter)] overflow-x-auto px-[var(--gutter)] md:mx-0 md:px-0" data-reveal>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between" data-reveal>
+        <div role="group" aria-label="Filter by status" className="no-scrollbar -mx-[var(--gutter)] overflow-x-auto px-[var(--gutter)] md:mx-0 md:px-0">
           <div className="inline-flex gap-1 rounded-full border border-onlight/10 bg-white/50 p-1">
             {filters.map((f) => (
               <button
@@ -82,6 +98,22 @@ export function EngineeringWork() {
             ))}
           </div>
         </div>
+          <label className="flex items-center gap-2 text-[0.84rem] text-onlight-mid">
+            <span className="t-label">Category</span>
+            <select
+              value={cat}
+              onChange={(e) => chooseCat(e.target.value)}
+              className="rounded-full border border-onlight/15 bg-white/60 px-3 py-1.5 text-onlight"
+            >
+              <option value="all">All categories</option>
+              {workCategories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
 
         {(filter === 'all' || filter === 'case-study') && (
           <div className="flex flex-col gap-3 rounded-2xl border border-dashed border-onlight/25 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -97,7 +129,7 @@ export function EngineeringWork() {
           {items.map((w) => (
             <li key={w.id}>
               <Link
-                href={`/work/${w.slug}${filter !== 'all' ? `?from=${filter}` : ''}`}
+                href={`/work/${w.slug}${query ? `?${query}` : ''}`}
                 className="panel-stone group flex h-full w-full flex-col overflow-hidden text-left transition-[transform,box-shadow] duration-500 hover:-translate-y-1 hover:shadow-[0_30px_60px_-30px_rgb(15_23_38/0.45)]"
               >
                 <div className="relative border-b border-onlight/8 bg-[#e6edf8] px-8 pt-8 pb-3">

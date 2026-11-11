@@ -12,6 +12,8 @@ import { ChapterTransition } from './ChapterTransition';
 
 const FIGURE_CAPTION: Record<string, string> = {
   gear: 'A controlled production cell',
+  screens: 'A control room: screens and redundant servers',
+  shield: 'Security zones, firewalls and one approved conduit',
   mesh: 'Assets feeding a governed data network',
   lattice: 'Equipment and the model that watches it',
   strata: 'A layered industrial application',
@@ -115,36 +117,50 @@ export function CapabilityExplorer() {
         <div id="cap-panel" role="tabpanel" aria-labelledby={`cap-tab-${cap.id}`} data-reveal>
           <div key={cap.id} className="swap-in">
             <p className="t-label text-signal-deep">{cap.full}</p>
-            <p className="mt-3 text-[1.25rem] leading-snug font-medium text-onlight md:text-[1.4rem]">{cap.statement}</p>
-            <ul className="t-small mt-5 grid gap-1.5 text-onlight/85">
-              {cap.scope.map((s) => (
-                <li key={s} className="flex gap-3">
-                  <span className="mt-[0.6rem] h-px w-3 shrink-0 bg-signal-deep" aria-hidden="true" />
-                  {s}
-                </li>
-              ))}
-            </ul>
-            <ul className="mt-5 flex flex-wrap gap-1.5" aria-label="Technologies">
+            <p className="mt-3 text-[1.15rem] leading-snug font-medium text-onlight md:text-[1.3rem]">{cap.statement}</p>
+            <p className="t-small mt-4 text-onlight-mid">
+              <strong className="font-semibold text-onlight">Engineering challenge.</strong> {cap.challenge}
+            </p>
+            <div className="mt-5 grid gap-5 sm:grid-cols-2">
+              <div>
+                <p className="t-label text-onlight-mid">Services</p>
+                <ul className="t-small mt-2 grid gap-1.5 text-onlight/90">
+                  {cap.services.map((x) => (
+                    <li key={x} className="flex gap-2.5">
+                      <span className="mt-[0.6rem] h-px w-3 shrink-0 bg-signal-deep" aria-hidden="true" />
+                      {x}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="t-label text-onlight-mid">Deliverables</p>
+                <ul className="t-small mt-2 grid gap-1.5 text-onlight/90">
+                  {cap.deliverables.map((x) => (
+                    <li key={x} className="flex gap-2.5">
+                      <span className="mt-[0.45rem] h-1.5 w-1.5 shrink-0 rounded-full border border-signal-deep" aria-hidden="true" />
+                      {x}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <p className="t-small mt-5 text-onlight-mid">
+              <strong className="font-semibold text-onlight">Approach.</strong> {cap.approach}
+            </p>
+            <ul className="mt-4 flex flex-wrap gap-1.5" aria-label="Representative technologies">
               {cap.technologies.map((t) => (
                 <li key={t} className="t-mono-plain rounded-full border border-onlight/15 bg-white/40 px-2.5 py-1 text-[0.7rem] text-onlight-mid">
                   {t}
                 </li>
               ))}
             </ul>
-            <dl className="mt-6 grid gap-px overflow-hidden rounded-xl border border-onlight/10 bg-onlight/10 sm:grid-cols-3">
-              {[
-                ['Typical problem', cap.problem],
-                ['Engagement outcome', cap.outcome],
-                ['Value created', cap.value],
-              ].map(([k, v], i) => (
-                <div key={k} className={`p-4 ${i === 2 ? 'bg-[#e3edfc]' : 'bg-stone'}`}>
-                  <dt className={`t-label ${i === 2 ? 'text-signal-deep' : 'text-onlight-mid'}`}>{k}</dt>
-                  <dd className="t-small mt-2 text-onlight">{v}</dd>
-                </div>
-              ))}
-            </dl>
-            <a href="#contact" className="link-signal mt-5 inline-flex items-center gap-2 text-[0.95rem] font-medium text-signal-deep">
-              Discuss {cap.name.toLowerCase()} with us <span aria-hidden="true">→</span>
+            <div className="mt-5 rounded-xl border border-signal-deep/20 bg-[#e3edfc] p-4">
+              <p className="t-label text-signal-deep">Typical customer outcome</p>
+              <p className="t-small mt-1.5 text-onlight">{cap.outcomes}</p>
+            </div>
+            <a href={cap.link} className="link-signal mt-5 inline-flex items-center gap-2 text-[0.95rem] font-medium text-signal-deep">
+              Go to {cap.name} <span aria-hidden="true">→</span>
             </a>
           </div>
         </div>

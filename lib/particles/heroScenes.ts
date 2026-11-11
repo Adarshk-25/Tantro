@@ -303,3 +303,231 @@ export function integratedScene(): HeroScene {
     ],
   };
 }
+
+/* =================================================================== */
+/* V3.2 hero: Engineer · Secure & Connect · Understand · Integrate       */
+/* =================================================================== */
+
+/** Vertical process tank with level indication and outlet pipe. */
+function tank(c: Vec3, s = 1, level = 0.62): ShapeParts {
+  const R = 0.32 * s, H = 0.95 * s;
+  return {
+    structure: [
+      { w: 5, s: tube([c[0], c[1] - H / 2, c[2]], [c[0], c[1] + H / 2, c[2]], R) },
+      { w: 1.2, s: disc([c[0], c[1] + H / 2, c[2]], [0, 1, 0], R) },
+      { w: 1, s: segment([c[0] + R, c[1] - H * 0.35, c[2]], [c[0] + R + 0.45 * s, c[1] - H * 0.35, c[2]], 0.012) },
+      { w: 0.8, s: ring([c[0] + R + 0.25 * s, c[1] - H * 0.35, c[2]], [1, 0, 0], 0.05 * s, 0.003) },
+    ],
+    nodes: [{ w: 2, s: ring([c[0], c[1] - H / 2 + H * level, c[2]], [0, 1, 0], R * 1.02, 0.003), accent: 1 }],
+  };
+}
+
+/** Field sensor: small instrument head on a stem. */
+const sensorAt = (p: Vec3): Part[] => [
+  { w: 0.4, s: segment([p[0], p[1] - 0.12, p[2]], p, 0.004) },
+  { w: 0.5, s: sphere(p, 0.035), accent: 1 },
+];
+
+/** A firewall / security boundary: a vertical dotted wall with a conduit opening. */
+function firewall(x: number, y0: number, y1: number, z0: number, z1: number, gapY: number): ShapeParts {
+  const structure: Part[] = [];
+  const h = y1 - y0;
+  structure.push({
+    w: 6,
+    s: (r) => {
+      for (let i = 0; i < 8; i++) {
+        const y = y0 + r() * h;
+        if (Math.abs(y - gapY) < 0.16) continue;
+        return [x + (r() - 0.5) * 0.02, y, z0 + r() * (z1 - z0)];
+      }
+      return [x, y0, z0];
+    },
+  });
+  return { structure, nodes: [{ w: 1.2, s: ring([x, gapY, (z0 + z1) / 2], [1, 0, 0], 0.14, 0.003), accent: 1 }] };
+}
+
+/** Zone outline on the floor. */
+const zoneFrame = (c: Vec3, size: Vec3): Part => ({ w: 2.2, s: boxEdges(c, size, 0.002), accent: 0.25 });
+
+/** Autonomous mobile robot with a small arm. */
+function amr(c: Vec3, s = 1): ShapeParts {
+  const arm = armParts({ at: [c[0] - 0.05 * s, c[1] + 0.85 * s, c[2]], s: 0.2 * s }, false);
+  return {
+    structure: [
+      { w: 3, s: boxEdges([c[0], c[1], c[2]], [0.7 * s, 0.22 * s, 0.5 * s], 0.003) },
+      { w: 2, s: boxSurface([c[0], c[1] + 0.11 * s, c[2]], [0.68 * s, 0.001, 0.48 * s]) },
+      ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => ({ w: 0.6, s: ring([c[0] + sx * 0.25 * s, c[1] - 0.12 * s, c[2] + sz * 0.26 * s], [0, 0, 1], 0.07 * s, 0.003) }) as Part)),
+      ...arm.structure.map((p) => ({ ...p, w: p.w * 0.25 })),
+    ],
+    nodes: [{ w: 0.6, s: ring([c[0], c[1] - 0.2 * s, c[2]], [0, 1, 0], 0.55 * s, 0.003), accent: 0.6 }, ...arm.nodes.map((p) => ({ ...p, w: p.w * 0.3 }))],
+  };
+}
+
+const flow = (pts: Vec3[], accent = 0.9, w = 1.4): Part[] =>
+  pts.slice(0, -1).map((p, i) => ({ w, s: segment(p, pts[i + 1], 0.004), accent }));
+
+/* S1 — ENGINEER: a controlled process cell */
+export function engineerScene(): HeroScene {
+  const arm = armParts({ at: [-0.95, -0.55, 0.25], s: 0.48 }, false);
+  const tk = tank([1.45, -1.05, -0.2], 1.05, 0.62);
+  const plc = cabinet([-2.15, -0.2, -0.45], 0.95);
+  const hmi = monitor([0.25, 1.55, -0.6], 1.15, 'mimic');
+  const conveyorParts: Part[] = [
+    { w: 3, s: boxEdges([0.15, -1.55, 0.55], [2.1, 0.12, 0.36], 0.003) },
+    ...[-0.6, -0.05, 0.5].map((x) => ({ w: 0.9, s: boxSurface([x, -1.4, 0.55], [0.17, 0.17, 0.17]) }) as Part),
+  ];
+  const sensors: Part[] = [...sensorAt([1.95, -0.5, -0.2]), ...sensorAt([0.8, -1.25, 0.55]), ...sensorAt([-0.4, -1.25, 0.55]), ...sensorAt([1.45, -1.62, 0.15])];
+  const signalLinks: Part[] = [
+    ...flow([[-1.75, -0.2, -0.3], [-1.2, -1.05, 0.2]], 0.5, 0.8),
+    ...flow([[-1.75, 0.0, -0.3], [1.1, -0.6, -0.2]], 0.5, 0.8),
+    ...flow([[-1.8, 0.3, -0.4], [-0.3, 1.3, -0.6]], 0.7, 1),
+  ];
+  const s = merge(
+    { g: 0, p: { nodes: arm.nodes, structure: arm.structure.map((p) => ({ ...p, w: p.w * 0.75 })) } },
+    { g: 1, p: { nodes: [...tk.nodes, ...sensors.filter((p) => p.accent)], structure: [...tk.structure, ...conveyorParts, ...sensors.filter((p) => !p.accent)] } },
+    { g: 2, p: plc },
+    { g: 3, p: hmi },
+    { g: 7, p: { nodes: signalLinks, structure: [{ w: 3, s: floorGrid([0, -1.75, 0], 3.2, 0.24) }] } },
+  );
+  return {
+    ...s,
+    anchors: [
+      { id: 'e-plc', label: 'PLC / DCS · step 4 TRANSFER', pos: [-2.15, 0.45, -0.45], g: 2 },
+      { id: 'e-hmi', label: 'SCADA / HMI', pos: [0.25, 2.0, -0.6], g: 3 },
+      { id: 'e-pv', label: 'PV level 62 % · SP 60 %', pos: [1.45, -0.32, -0.2], g: 1 },
+      { id: 'e-ilk', label: 'Interlock: guard closed ✓', pos: [-0.55, 1.2, 0.25], g: 0 },
+      { id: 'e-run', label: 'Conveyor · RUN', pos: [0.15, -1.15, 0.55], g: 1 },
+    ],
+  };
+}
+
+/* S2 — SECURE & CONNECT: zones, conduits and approved flows */
+export function secureScene(): HeroScene {
+  const plc = cabinet([-2.2, -0.6, 0], 0.7);
+  const machines: Part[] = [
+    { w: 2, s: boxEdges([-2.25, -1.45, 0.45], [0.55, 0.42, 0.42], 0.003) },
+    { w: 1, s: boxSurface([-2.25, -1.45, 0.67], [0.48, 0.36, 0.001]) },
+  ];
+  const scada = monitor([-0.85, -0.35, 0.1], 0.75, 'mimic');
+  const srv: Part[] = [0, 1].map((i) => ({ w: 2, s: boxEdges([-0.85, -1.25 + i * 0.3, -0.25], [0.5, 0.2, 0.42], 0.003) }));
+  const edge = edgeBox([0.55, -0.35, 0.05], 0.95);
+  const broker = database([0.55, -1.15, 0.05], 0.55);
+  const ent = monitor([1.95, 0.05, -0.1], 0.75, 'list');
+  const entDb = database([2.0, -1.05, -0.1], 0.6);
+  const fw1 = firewall(-1.55, -1.75, 1.0, -0.6, 0.7, -0.35);
+  const fw2 = firewall(-0.1, -1.75, 1.0, -0.6, 0.7, -0.4);
+  const fw3 = firewall(1.25, -1.75, 1.0, -0.6, 0.7, -0.35);
+  const zones: Part[] = [
+    zoneFrame([-2.2, -1.75, 0.05], [1.2, 0.01, 1.3]),
+    zoneFrame([-0.82, -1.75, 0.05], [1.35, 0.01, 1.3]),
+    zoneFrame([0.57, -1.75, 0.05], [1.25, 0.01, 1.3]),
+    zoneFrame([1.95, -1.75, 0.05], [1.3, 0.01, 1.3]),
+  ];
+  // approved flows only pass through conduits (the firewall openings)
+  const flows: Part[] = [
+    ...flow([[-1.95, -0.45, 0.1], [-1.55, -0.35, 0.05], [-1.2, -0.35, 0.1]]),
+    ...flow([[-0.5, -0.4, 0.1], [-0.1, -0.4, 0.05], [0.3, -0.35, 0.05]]),
+    ...flow([[0.82, -0.35, 0.05], [1.25, -0.35, 0.05], [1.6, -0.05, -0.1]]),
+  ];
+  const s = merge(
+    { g: 0, p: { nodes: plc.nodes, structure: [...plc.structure, ...machines] } },
+    { g: 1, p: { nodes: scada.nodes, structure: [...scada.structure, ...srv] } },
+    { g: 2, p: { nodes: [...edge.nodes, ...broker.nodes], structure: [...edge.structure, ...broker.structure] } },
+    { g: 3, p: { nodes: [...ent.nodes, ...entDb.nodes], structure: [...ent.structure, ...entDb.structure] } },
+    { g: 4, p: { nodes: [...fw1.nodes, ...fw2.nodes, ...fw3.nodes, ...flows], structure: [...fw1.structure, ...fw2.structure, ...fw3.structure, ...zones] } },
+  );
+  return {
+    ...s,
+    anchors: [
+      { id: 'c-z1', label: 'Zone 1 · Control', pos: [-2.2, -2.0, 0.6], g: 0 },
+      { id: 'c-z2', label: 'Zone 2 · SCADA', pos: [-0.85, 0.3, 0.1], g: 1 },
+      { id: 'c-dmz', label: 'Industrial DMZ · edge & broker', pos: [0.55, 0.15, 0.05], g: 2 },
+      { id: 'c-ent', label: 'Enterprise · MES / ERP / cloud', pos: [1.95, 0.6, -0.1], g: 3 },
+      { id: 'c-fw', label: 'Firewall · approved conduit only', pos: [-0.1, 1.15, 0.05], g: 4 },
+    ],
+  };
+}
+
+/* S3 — UNDERSTAND & OPTIMIZE: historian, context, vision, ML */
+export function understandScene(): HeroScene {
+  const pump = pumpSkid([-1.35, -1.05, 0.25], 0.85);
+  const hist = database([-0.15, -0.95, -0.2], 0.8);
+  const tree: Part[] = [];
+  const root: Vec3 = [-1.4, 1.35, -0.3];
+  [
+    [-2.0, 0.85, -0.3],
+    [-1.4, 0.85, -0.3],
+    [-0.8, 0.85, -0.3],
+  ].forEach((c) => {
+    tree.push({ w: 0.8, s: segment(root, c as Vec3, 0.003) }, { w: 0.8, s: boxEdges(c as Vec3, [0.32, 0.14, 0.02], 0.002) });
+  });
+  tree.push({ w: 1, s: boxEdges(root, [0.44, 0.16, 0.02], 0.002) });
+  const chart = chartPanel([1.1, 1.0, -0.3], 1.55, 0.85, true);
+  const cam: Part[] = [
+    { w: 1.5, s: boxEdges([1.3, -0.3, 0.35], [0.24, 0.18, 0.3], 0.003) },
+    { w: 1, s: segment([1.3, -0.4, 0.45], [1.0, -1.35, 0.6], 0.003), accent: 0.6 },
+    { w: 1, s: segment([1.3, -0.4, 0.45], [1.6, -1.35, 0.6], 0.003), accent: 0.6 },
+    { w: 1.2, s: boxSurface([1.3, -1.45, 0.6], [0.22, 0.12, 0.22]) },
+  ];
+  const wo: Part[] = [{ w: 1.4, s: boxEdges([2.1, -0.95, -0.1], [0.55, 0.36, 0.02], 0.002) }, ...flow([[1.9, -0.95, -0.08], [2.25, -0.95, -0.08]], 1, 0.4)];
+  const flows: Part[] = [
+    ...flow([[-1.25, -0.75, 0.25], [-0.45, -0.75, -0.2]], 0.7, 0.8),
+    ...flow([[0.15, -0.6, -0.2], [0.45, 0.6, -0.3]], 0.7, 0.8),
+    ...flow([[-0.15, -0.5, -0.2], [-1.4, 1.2, -0.3]], 0.6, 0.8),
+    ...flow([[1.6, 0.6, -0.3], [2.1, -0.75, -0.1]], 0.8, 0.8),
+  ];
+  const s = merge(
+    { g: 0, p: pump },
+    { g: 1, p: hist },
+    { g: 2, p: { nodes: [], structure: tree } },
+    { g: 3, p: { nodes: [...chart.nodes, ...wo.filter((p) => p.accent)], structure: [...chart.structure, ...wo.filter((p) => !p.accent)] } },
+    { g: 5, p: { nodes: cam.filter((p) => p.accent), structure: cam.filter((p) => !p.accent) } },
+    { g: 7, p: { nodes: flows, structure: [{ w: 3, s: floorGrid([0, -1.6, 0], 3.0, 0.24) }] } },
+  );
+  return {
+    ...s,
+    anchors: [
+      { id: 'u-hist', label: 'Historian · time-series', pos: [-0.15, -0.35, -0.2], g: 1 },
+      { id: 'u-ctx', label: 'Context model · site / area / asset', pos: [-1.4, 1.65, -0.3], g: 2 },
+      { id: 'u-ml', label: 'ML anomaly score · 3.4σ', pos: [1.35, 1.6, -0.3], g: 3 },
+      { id: 'u-vis', label: 'Vision inspection', pos: [1.3, -0.05, 0.35], g: 5 },
+      { id: 'u-wo', label: 'Maintenance work order', pos: [2.1, -0.6, -0.1], g: 3 },
+    ],
+  };
+}
+
+/* S4 — INTEGRATE & ADVANCE: the whole engineered environment */
+export function advanceScene(): HeroScene {
+  const arm = armParts({ at: [-2.0, -0.95, 0.3], s: 0.34 }, false);
+  const plc = cabinet([-0.95, -0.85, -0.3], 0.62);
+  const fw = firewall(-0.25, -1.65, 0.6, -0.55, 0.55, -0.7);
+  const edge = edgeBox([0.4, -0.7, 0.05], 0.8);
+  const app = monitor([0.25, 1.15, -0.45], 0.9, 'list');
+  const ai = chartPanel([1.75, 1.15, -0.4], 1.05, 0.62, true);
+  const robot = amr([1.6, -1.25, 0.35], 0.85);
+  const loop: Part[] = [
+    ...flow([[-1.7, -0.7, 0.3], [-1.2, -0.75, -0.2]], 0.7, 1),
+    ...flow([[-0.7, -0.75, -0.2], [-0.25, -0.7, 0.0], [0.15, -0.7, 0.05]], 0.9, 1),
+    ...flow([[0.6, -0.6, 0.05], [0.4, 0.75, -0.4]], 0.7, 1),
+    ...flow([[0.75, 1.15, -0.45], [1.2, 1.15, -0.4]], 0.7, 1),
+    ...flow([[1.8, 0.8, -0.4], [1.7, -0.85, 0.3]], 0.9, 1),
+  ];
+  const s = merge(
+    { g: 0, p: { nodes: arm.nodes, structure: arm.structure.map((p) => ({ ...p, w: p.w * 0.6 })) } },
+    { g: 1, p: plc },
+    { g: 2, p: { nodes: [...fw.nodes, ...edge.nodes], structure: [...fw.structure, ...edge.structure] } },
+    { g: 3, p: { nodes: [...app.nodes, ...ai.nodes], structure: [...app.structure, ...ai.structure] } },
+    { g: 4, p: robot },
+    { g: 7, p: { nodes: loop, structure: [{ w: 3, s: floorGrid([0, -1.65, 0], 3.1, 0.24) }] } },
+  );
+  return {
+    ...s,
+    anchors: [
+      { id: 'a-phys', label: 'Physical systems', pos: [-2.1, 0.35, 0.3], g: 0 },
+      { id: 'a-ctl', label: 'PLC / DCS', pos: [-0.95, -1.35, -0.3], g: 1 },
+      { id: 'a-sec', label: 'Secure edge & DMZ', pos: [0.15, -0.15, 0.05], g: 2 },
+      { id: 'a-app', label: 'Applications & AI', pos: [1.0, 1.75, -0.45], g: 3 },
+      { id: 'a-rob', label: 'Robotics & physical AI', pos: [1.6, -0.55, 0.35], g: 4 },
+    ],
+  };
+}

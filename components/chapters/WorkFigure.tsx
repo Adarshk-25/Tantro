@@ -81,6 +81,64 @@ export function WorkFigure({ figure }: { figure: Fig }) {
           <circle cx={270} cy={142} r={56} strokeDasharray="3 6" opacity={0.3} />
         </g>
       )}
+      {figure === 'control' && (
+        <g {...common}>
+          {['IDLE', 'READY', 'START', 'RUN', 'STOP', 'DONE'].map((t, i) => (
+            <g key={t}>
+              <rect x={14 + i * 50} y={40} width={42} height={22} rx={5} opacity={i === 3 ? 1 : 0.6} />
+              <text x={35 + i * 50} y={55} textAnchor="middle" fontSize={8} fill="currentColor" stroke="none" className="t-mono-plain">
+                {t}
+              </text>
+              {i < 5 && <path d={`M${56 + i * 50} 51h8`} />}
+            </g>
+          ))}
+          <path d="M175 62 v40 h-30" className="flow-hover text-signal-deep" stroke="currentColor" />
+          <rect x={95} y={92} width={50} height={22} rx={5} className="text-signal-deep" stroke="currentColor" />
+          <text x={120} y={107} textAnchor="middle" fontSize={8} fill="currentColor" stroke="none" className="t-mono-plain text-signal-deep">
+            HELD
+          </text>
+          <path d="M40 150h240 M40 170h240" opacity={0.5} />
+          {[60, 120, 180].map((x) => (
+            <rect key={x} x={x} y={152} width={22} height={16} />
+          ))}
+          <rect x={250} y={140} width={10} height={10} />
+        </g>
+      )}
+      {figure === 'scada' && (
+        <g {...common}>
+          <rect x={30} y={24} width={260} height={150} rx={6} />
+          <rect x={30} y={24} width={260} height={18} rx={6} opacity={0.5} />
+          <circle cx={90} cy={100} r={26} />
+          <circle cx={200} cy={100} r={26} />
+          <path d="M116 100h58" />
+          <path d="M50 160 L80 150 L110 155 L140 140 L170 148 L200 130 L230 136 L270 128" className="flow-hover text-signal-deep" stroke="currentColor" />
+          <rect x={232} y={50} width={50} height={14} rx={3} className="text-signal-deep" stroke="currentColor" />
+        </g>
+      )}
+      {figure === 'security' && (
+        <g {...common}>
+          {[20, 110, 200].map((x) => (
+            <rect key={x} x={x} y={40} width={84} height={120} rx={8} opacity={0.6} />
+          ))}
+          {[107, 197].map((x) => (
+            <rect key={x} x={x - 3} y={36} width={6} height={128} className="text-signal-deep" stroke="currentColor" />
+          ))}
+          <path d="M60 100 H150 H240" className="flow-hover text-signal-deep" stroke="currentColor" />
+          <path d="M150 20c12 4 22 4 22 4v14c0 10-10 16-22 20-12-4-22-10-22-20V24s10 0 22-4z" />
+        </g>
+      )}
+      {figure === 'mes' && (
+        <g {...common}>
+          <rect x={20} y={70} width={70} height={50} rx={6} />
+          <rect x={125} y={70} width={70} height={50} rx={6} />
+          <rect x={230} y={70} width={70} height={50} rx={6} />
+          <text x={55} y={99} textAnchor="middle" fontSize={10} fill="currentColor" stroke="none">LINE</text>
+          <text x={160} y={99} textAnchor="middle" fontSize={10} fill="currentColor" stroke="none">MES</text>
+          <text x={265} y={99} textAnchor="middle" fontSize={10} fill="currentColor" stroke="none">ERP</text>
+          <path d="M195 85 H230 M90 95 H125" className="flow-hover text-signal-deep" stroke="currentColor" />
+          <path d="M230 108 H195" />
+        </g>
+      )}
     </svg>
   );
 }

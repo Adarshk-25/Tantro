@@ -83,7 +83,9 @@ Each chapter is a viewport-height story panel (`ChapterTransition`). It has a co
 - `content/site.ts` and `content/company.ts`: replace the `[bracketed]` placeholders (registered name, city, founders, year).
 - `app/opengraph-image.tsx` generates a placeholder OG image. Replace it with a designed one.
 - All simulator data is synthetic and labelled as such on the page.
-- `public/tantro-logo.png` is unchanged and used as the favicon. The page header uses a typographic wordmark, because the logo's blue/purple gradient conflicts with the graphite/copper palette.
+- `public/tantro-logo.png` is unchanged and used as the favicon.
+- `content/automation.ts` → `ecosystems`: confirm that every vendor platform listed is one the team has hands-on experience with. The list describes familiarity only; the page says it implies no partnership. Show partner or certification badges only with written authorisation.
+- `content/security.ts` → `standards`: these are principles we apply. Do not add "certified" or "compliant" wording without an actual certificate or assessment.
 
 ## V3 notes
 
@@ -114,3 +116,35 @@ The script writes `public/models/humanoid-points.bin` (about 1.1 MB) and `public
 - Every project has a route at `/work/[slug]`, with an interactive preview, problem, challenge, approach, validation status and related capabilities.
 - The work filter is stored in the URL (`/?work=research#work`). The project Back link and the browser's back/forward buttons restore it.
 - **Root cause of the empty list:** `MotionRoot` hid every `[data-reveal]` element and observed only elements that existed when it first ran. Cards mounted later stayed at opacity 0, for example after switching filters back to "All work". `MotionRoot` now registers late-mounted elements with a `MutationObserver`, and work cards no longer depend on reveal animation.
+
+## V3.2 notes
+
+### Positioning
+The homepage presents Tantro as a full-stack industrial engineering company: automation and control, OT cybersecurity, connectivity and data, industrial AI, software/SCADA/MES, and physical AI. The hero's four stages are **Engineer → Secure & connect → Understand & optimize → Integrate & advance** (`content/hero.ts`, scenes in `lib/particles/heroScenes.ts`). Chapter order is set in `app/page.tsx` and `content/site.ts`.
+
+### The invisible humanoid: root cause and fix
+The figure used to render in two passes: a depth-only "occluder" pass of large invisible splats, then the visible dots, which were depth-tested against it. That relies on how a GPU driver writes depth for point sprites. Some drivers (including the one used for headless testing) accepted it; on others the occluder depth covered every visible dot, so only labels and the floor showed. The occluder pass is gone. Dots are now opaque and depth-tested against each other, back-facing points are culled in the vertex shader, and normals are guarded against NaN. The camera is framed from the model's computed bounds, so the whole body fits in every stage and view (Front, 3/4, Side, Reset). If WebGL or the model fails, or no points arrive within 9 s, an SVG silhouette (`HumanoidFallback.tsx`) is shown instead.
+
+### Hero hover and disassembly
+Hovering no longer moves the whole object. The pointer is ray-cast onto the scene plane, and the shader displaces only particles within about 0.8 units of it, with per-particle jitter. A spring–damper on the CPU makes the particles settle back when the pointer leaves. Clicking the model, or the "Explore components" button, toggles the exploded view; Escape reassembles it. Reduced-motion users see no dispersion. On phones and portrait tablets, the hero's floating labels appear only in the exploded view.
+
+### New sections
+- **Industrial Automation & Control** (`AutomationChapter`, `ControlEngineeringExplorer`): five views (I/O, PLC sequence, SCADA, MES, fault & recovery), a simulated conveyor jam with alarm and recovery workflow. It is a simulation: it sends no commands, and safety permissives are shown as monitored, never overridden.
+- **OT Cybersecurity** (`SecurityChapter`, `SecurityExplorer`): scenarios A–E (flat network, segmentation, remote maintenance, monitoring, recovery), each with challenge, affected assets, control, operational considerations and residual risk. Defensive and educational only.
+- **Services menu:** the navigation lists six service journeys (`journeys` in `content/site.ts`).
+- **Capabilities:** eight disciplines, each with challenge, services, approach, technologies, deliverables and outcomes.
+- **Decision Lab:** 14 scenarios, each running Problem → Data → Analysis → Output → Action → Value.
+- **Portfolio:** eight categories, with a category filter alongside the status filter. Both filters persist through `?work=…&cat=…`, project links and browser back/forward. Four new draft entries cover control, SCADA, OT security and MES/ERP.
+
+### Testing
+Browser acceptance tests (Playwright, 54 checks) cover:
+- the portfolio, its filters and history;
+- the services menu;
+- automation views, the fault and its recovery;
+- security scenarios A–E;
+- all 14 lab scenarios;
+- the eight capabilities;
+- Physical AI stages and views;
+- hero explode and Escape;
+- the mobile menu;
+- horizontal overflow at 390, 768, 1440 and 1920 px.
