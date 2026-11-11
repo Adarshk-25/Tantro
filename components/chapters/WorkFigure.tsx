@@ -16,7 +16,7 @@ export function WorkFigure({ figure }: { figure: Fig }) {
               })}
             </g>
           ))}
-          <rect x={14} y={100} width={292} height={40} strokeDasharray="4 4" className="text-signal-deep" stroke="currentColor" />
+          <rect x={14} y={100} width={292} height={40} strokeDasharray="4 4" className="flow-hover text-signal-deep" stroke="currentColor" />
           <text x={300} y={96} textAnchor="end" className="t-mono" fill="currentColor" stroke="none" style={{ fontSize: 9 }}>
             EDGE ZONE
           </text>
@@ -28,7 +28,7 @@ export function WorkFigure({ figure }: { figure: Fig }) {
           {[30, 60, 100, 140, 130, 160].map((y, i) => (
             <circle key={i} cx={i < 4 ? (i === 0 ? 40 : 70) : 95} cy={y} r={3.5} />
           ))}
-          <path d="M120 100 C170 100 170 60 220 60 M120 100 C170 100 170 100 220 100 M120 100 C170 100 170 140 220 140" className="text-signal-deep" stroke="currentColor" />
+          <path d="M120 100 C170 100 170 60 220 60 M120 100 C170 100 170 100 220 100 M120 100 C170 100 170 140 220 140" className="flow-hover text-signal-deep" stroke="currentColor" />
           {[60, 100, 140].map((y) => (
             <rect key={y} x={220} y={y - 10} width={80} height={20} />
           ))}
@@ -47,7 +47,7 @@ export function WorkFigure({ figure }: { figure: Fig }) {
           <circle cx={112} cy={105} r={9} />
           <circle cx={208} cy={105} r={9} />
           <path d="M180 78 q8 6 12 22" />
-          <rect x={172} y={70} width={30} height={36} className="text-signal-deep" stroke="currentColor" strokeWidth={1.6} />
+          <rect x={172} y={70} width={30} height={36} className="flow-hover text-signal-deep" stroke="currentColor" strokeWidth={1.6} />
         </g>
       )}
       {figure === 'predictive' && (
@@ -62,7 +62,7 @@ export function WorkFigure({ figure }: { figure: Fig }) {
               return `L${x} ${y.toFixed(1)}`;
             }).join(' ')}`}
           />
-          <path d="M196 40 H300 V160 H196 Z" className="text-signal-deep" stroke="currentColor" strokeDasharray="4 4" />
+          <path d="M196 40 H300 V160 H196 Z" className="flow-hover text-signal-deep" stroke="currentColor" strokeDasharray="4 4" />
         </g>
       )}
       {figure === 'robotics' && (
@@ -76,7 +76,7 @@ export function WorkFigure({ figure }: { figure: Fig }) {
           ].map(([x, y]) => (
             <circle key={x} cx={x} cy={y} r={6} />
           ))}
-          <path d="M180 100 C220 60 260 80 270 130" strokeDasharray="2 5" className="text-signal-deep" stroke="currentColor" />
+          <path d="M180 100 C220 60 260 80 270 130" strokeDasharray="2 5" className="flow-hover text-signal-deep" stroke="currentColor" />
           <rect x={258} y={130} width={24} height={24} />
           <circle cx={270} cy={142} r={56} strokeDasharray="3 6" opacity={0.3} />
         </g>

@@ -11,11 +11,9 @@ const hrefChapter = (href: string) => (href.startsWith('/#') ? href.slice(2) : n
 export function Wordmark({ className = '' }: { className?: string }) {
   return (
     <span className={`inline-flex items-center gap-2.5 ${className}`}>
-      <span className="relative block h-3.5 w-3.5" aria-hidden="true">
-        <span className="absolute inset-x-0 top-0 h-[3px] bg-current" />
-        <span className="absolute top-0 bottom-0 left-1/2 w-[3px] -translate-x-1/2 bg-current" />
-        <span className="absolute right-0 bottom-0 h-[5px] w-[5px] rounded-full bg-signal" />
-      </span>
+      {/* Official Tantro logomark (transparent derivative of public/tantro-logo.png) */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/tantro-mark.png" alt="" width={26} height={26} className="h-[26px] w-[26px]" />
       <span className="font-display text-[1.02rem] font-[650] tracking-[0.32em] [font-variation-settings:'wdth'_118]">
         TANTRO
       </span>

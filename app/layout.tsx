@@ -56,11 +56,11 @@ export const metadata: Metadata = {
     title: 'Tantro — Engineering intelligence into the physical world',
     description: site.description,
   },
-  icons: { icon: '/tantro-logo.png', apple: '/tantro-logo.png' },
+  icons: { icon: '/tantro-mark.png', apple: '/tantro-logo.png' },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0b0c0d',
+  themeColor: '#090d16',
   colorScheme: 'dark',
 };
 

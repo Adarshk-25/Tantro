@@ -120,7 +120,145 @@ export const physicalCopy = {
   index: '01',
   eyebrow: 'The physical world',
   title: 'Every machine has a story.',
-  lede: 'Machines speak constantly — through torque, vibration, pressure, energy, cycle time, rejects and alarms. Most of it goes unheard. Select any asset in the cell to follow its story from signal to action.',
+  lede: 'Machines speak constantly — through torque, vibration, pressure, energy, cycle time, rejects and alarms. Follow a guided investigation of one production cell, or explore any asset yourself.',
   steps: ['Emerging problem', 'Data observed', 'Operational risk', 'Action Tantro enables'],
   disclaimer: 'Illustrative scenarios and values.',
+};
+
+/* ------------------------------------------------------------------ */
+/* Guided investigation: "A production cell begins losing performance" */
+/* ------------------------------------------------------------------ */
+
+export type Status = 'ok' | 'warn' | 'alert';
+export type Kpi = { label: string; value: string; delta?: string; status: Status };
+
+export type InvestigationChapter = {
+  id: string;
+  title: string;
+  question: string;
+  text: string;
+  focus: string[];
+  cncStatus: Status;
+  kpis: Kpi[];
+  callouts: { asset: string; text: string; tone: Status }[];
+  trend?: { label: string; unit: string; from: number; to: number; limit: number; noise: number; band?: boolean };
+  evidence?: { source: string; protocol: string; time: string; signal: string; value: string; tone: Status }[];
+  hypotheses?: { cause: string; p: number; forEvidence: string; against: string }[];
+  watching?: string[];
+  actions?: string[];
+  outcome?: { label: string; before: string; after: string }[];
+};
+
+export const investigation = {
+  title: 'A production cell begins losing performance',
+  chapters: [
+    {
+      id: 'normal',
+      title: 'Normal operation',
+      question: 'What does good look like?',
+      text: 'Cell 3 machines a steel bracket for a two-shift order. The CNC, robot and packaging line run to plan, and every signal sits inside its usual range.',
+      focus: ['cnc'],
+      cncStatus: 'ok',
+      kpis: [
+        { label: 'Cycle time', value: '48.2 s', status: 'ok' },
+        { label: 'Output', value: '74 /h', status: 'ok' },
+        { label: 'Reject rate', value: '0.8 %', status: 'ok' },
+        { label: 'Equipment', value: 'Running', status: 'ok' },
+      ],
+      callouts: [{ asset: 'cnc', text: 'Running to plan', tone: 'ok' }],
+      trend: { label: 'Spindle load', unit: '%', from: 60, to: 61, limit: 75, noise: 1.2 },
+      watching: ['CNC spindle load and program cycle time (OPC UA)', 'PLC machine states, stops and counts', 'Vision verdicts and reject rate per part', 'SCADA alarms and events, MES order context'],
+    },
+    {
+      id: 'deviation',
+      title: 'Early deviation',
+      question: 'What changed?',
+      text: 'Over three shifts, spindle load creeps up and cycle-time variation widens. Nothing has alarmed — every value is still inside its limit — but the pattern has changed.',
+      focus: ['cnc'],
+      cncStatus: 'warn',
+      kpis: [
+        { label: 'Cycle time', value: '50.9 s', delta: '+5.6 %', status: 'warn' },
+        { label: 'Output', value: '70 /h', delta: '−4', status: 'warn' },
+        { label: 'Reject rate', value: '0.9 %', status: 'ok' },
+        { label: 'Equipment', value: 'Running', status: 'ok' },
+      ],
+      callouts: [{ asset: 'cnc', text: 'Spindle load +12 % · cycle σ ×2', tone: 'warn' }],
+      trend: { label: 'Spindle load', unit: '%', from: 60, to: 71, limit: 75, noise: 1.5, band: true },
+      watching: ['No alarm has fired — every value is still inside its limit', 'The change is in the trend and the variation, not the level', 'Threshold-only monitoring would stay silent here'],
+    },
+    {
+      id: 'investigation',
+      title: 'Investigation',
+      question: 'How do we know?',
+      text: 'Signals from four systems are aligned on one timeline. Each source sees part of the picture; together they narrow the search.',
+      focus: ['cnc', 'hmi', 'packaging'],
+      cncStatus: 'warn',
+      kpis: [
+        { label: 'Cycle time', value: '51.3 s', delta: '+6.4 %', status: 'warn' },
+        { label: 'Output', value: '69 /h', delta: '−5', status: 'warn' },
+        { label: 'Reject rate', value: '1.1 %', delta: '+0.3', status: 'warn' },
+        { label: 'Equipment', value: 'Running', status: 'ok' },
+      ],
+      callouts: [
+        { asset: 'cnc', text: 'CNC · spindle load 71 %', tone: 'warn' },
+        { asset: 'hmi', text: 'SCADA · coolant flow low ×2', tone: 'warn' },
+        { asset: 'packaging', text: 'MES · tool T12 at 1,840 parts', tone: 'ok' },
+      ],
+      evidence: [
+        { source: 'CNC controller', protocol: 'OPC UA', time: '06:14:22', signal: 'spindle_load', value: '71 % ↑', tone: 'warn' },
+        { source: 'Cell PLC', protocol: 'OPC UA', time: '06:14:25', signal: 'feed_hold events', value: '3 in 60 min', tone: 'warn' },
+        { source: 'SCADA alarms', protocol: 'A&E', time: '06:15:02', signal: 'coolant flow low', value: '2 × warning', tone: 'warn' },
+        { source: 'MES', protocol: 'API', time: '06:00:00', signal: 'order 4471 · tool T12', value: '1,840 parts', tone: 'ok' },
+      ],
+    },
+    {
+      id: 'insight',
+      title: 'Engineering insight',
+      question: 'Why does it matter?',
+      text: 'The evidence points most strongly to tool wear, but coolant delivery cannot be ruled out. This is a ranked hypothesis to verify — not a confirmed diagnosis.',
+      focus: ['cnc'],
+      cncStatus: 'warn',
+      kpis: [
+        { label: 'Cycle time', value: '51.3 s', delta: '+6.4 %', status: 'warn' },
+        { label: 'Output', value: '69 /h', delta: '−5', status: 'warn' },
+        { label: 'Reject rate', value: '1.1 %', delta: '+0.3', status: 'warn' },
+        { label: 'Risk', value: 'Tolerance drift', status: 'alert' },
+      ],
+      callouts: [{ asset: 'cnc', text: 'Probable cause: tool T12 wear (0.64)', tone: 'alert' }],
+      hypotheses: [
+        { cause: 'Tool T12 wear', p: 0.64, forEvidence: 'Load rise tracks tool part count; past T12 life profile', against: 'Load rose faster than typical wear' },
+        { cause: 'Coolant delivery restriction', p: 0.22, forEvidence: 'Two coolant-flow warnings in the window', against: 'Warnings started after the load rise' },
+        { cause: 'Material lot hardness', p: 0.14, forEvidence: 'New lot L-2291 loaded at 05:40', against: 'Same lot ran normally on cell 2' },
+      ],
+    },
+    {
+      id: 'action',
+      title: 'Action and outcome',
+      question: 'What can be done?',
+      text: 'Inspect before continuing: the change is planned into the next changeover, part quality is verified, and the result confirms or rejects the hypothesis.',
+      focus: ['cnc', 'vision'],
+      cncStatus: 'ok',
+      kpis: [
+        { label: 'Cycle time', value: '48.4 s', delta: 'simulated', status: 'ok' },
+        { label: 'Output', value: '74 /h', delta: 'simulated', status: 'ok' },
+        { label: 'Reject rate', value: '0.8 %', delta: 'simulated', status: 'ok' },
+        { label: 'Equipment', value: 'Running', status: 'ok' },
+      ],
+      callouts: [
+        { asset: 'cnc', text: 'Tool T12 inspected at changeover', tone: 'ok' },
+        { asset: 'vision', text: '5 parts verified before restart', tone: 'ok' },
+      ],
+      actions: [
+        'Schedule tool T12 inspection at the next changeover (in 40 min)',
+        'Check the coolant filter and flow while the spindle is stopped',
+        'Verify five parts at inspection before continuing production',
+        'Record the finding so the hypothesis model learns from it',
+      ],
+      outcome: [
+        { label: 'Cycle time', before: '51.3 s', after: '48.4 s' },
+        { label: 'Reject rate', before: '1.1 %', after: '0.8 %' },
+        { label: 'Unplanned stop', before: 'likely', after: 'avoided' },
+      ],
+    },
+  ] as InvestigationChapter[],
 };

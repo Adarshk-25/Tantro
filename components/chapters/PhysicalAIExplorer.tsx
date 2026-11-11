@@ -9,6 +9,12 @@ import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import { ChapterTransition } from './ChapterTransition';
 
 const HumanoidScene = dynamic(() => import('./robotics/HumanoidScene'), { ssr: false });
+type ViewId = 'front' | 'threeq' | 'side';
+const VIEWS: { id: ViewId; label: string }[] = [
+  { id: 'front', label: 'Front' },
+  { id: 'threeq', label: '3/4' },
+  { id: 'side', label: 'Side' },
+];
 const CYCLE_MS = 7000;
 
 export function PhysicalAIExplorer() {
@@ -16,7 +22,9 @@ export function PhysicalAIExplorer() {
   const [auto, setAuto] = useState(true);
   const [mode, setMode] = useState<'pending' | 'webgl' | 'fallback'>('pending');
   const [tier, setTier] = useState<QualityTier>('medium');
-  const [narrow, setNarrow] = useState(false);
+  const [view, setView] = useState<ViewId>('threeq');
+  const [resetKey, setResetKey] = useState(0);
+  const [points, setPoints] = useState<number | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const near = useInView(stageRef, { rootMargin: '600px', once: true });
   const visible = useInView(stageRef);
@@ -32,14 +40,6 @@ export function PhysicalAIExplorer() {
     setTier(getQualityTier());
     setMode(hasWebGL() ? 'webgl' : 'fallback');
   }, [near, mode]);
-
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 1023px)');
-    const upd = () => setNarrow(mq.matches);
-    upd();
-    mq.addEventListener('change', upd);
-    return () => mq.removeEventListener('change', upd);
-  }, []);
 
   // Autoplay through the loop while the figure is in focus.
   useEffect(() => {
@@ -96,15 +96,25 @@ export function PhysicalAIExplorer() {
       }
       lede={innovationCopy.lede}
     >
-      <div className="grid flex-1 gap-5 lg:grid-cols-12 lg:gap-8">
+      <div className="grid flex-1 gap-5 lg:grid-cols-[2fr_3fr] lg:gap-8">
         {/* Figure */}
-        <div className="flex flex-col lg:order-2 lg:col-span-7" data-reveal>
+        <div className="flex flex-col lg:order-2" data-reveal>
           <div
             ref={stageRef}
-            className="relative h-[58svh] min-h-[360px] overflow-hidden rounded-2xl border border-hi/8 bg-[radial-gradient(ellipse_at_50%_70%,#1a1d21,#0b0c0d_70%)] lg:h-full lg:min-h-[480px]"
+            className="relative h-[64svh] min-h-[420px] overflow-hidden rounded-2xl border border-hi/8 bg-[radial-gradient(ellipse_at_50%_65%,#16223a,#090d16_72%)] lg:h-full lg:min-h-[540px]"
           >
             {mode === 'webgl' && (
-              <HumanoidScene tier={tier} active={visible} stage={st.id} reducedMotion={reduced} labels={st.labels} labelEls={labelEls} narrow={narrow} />
+              <HumanoidScene
+                tier={tier}
+                active={visible}
+                stage={st.id}
+                reducedMotion={reduced}
+                labels={st.labels}
+                labelEls={labelEls}
+                view={view}
+                resetKey={resetKey}
+                onReady={setPoints}
+              />
             )}
             {mode === 'fallback' && (
               <p className="absolute inset-0 flex items-center justify-center p-8 text-center text-mid">
@@ -121,14 +131,45 @@ export function PhysicalAIExplorer() {
                   }}
                   className="absolute top-0 left-0 opacity-0 transition-opacity duration-300"
                 >
-                  <span className="t-label block -translate-x-1/2 -translate-y-[140%] rounded-md border border-signal/40 bg-ink-950/85 px-2 py-1 whitespace-nowrap text-signal-soft">
+                  <span className="t-label block -translate-x-1/2 -translate-y-[150%] rounded-full border border-cyan/40 bg-ink-950/85 px-2.5 py-1 whitespace-nowrap text-hi shadow-[0_0_20px_rgb(60_196_210/0.15)]">
                     {l.text}
                   </span>
                 </span>
               ))}
             </div>
-            <span className="t-label pointer-events-none absolute top-4 left-4 text-lo">Concept model · original design</span>
-            <span className="t-label pointer-events-none absolute top-4 right-4 hidden text-lo sm:block">Move pointer to orbit</span>
+            {mode === 'webgl' && points === null && (
+              <p className="t-label absolute inset-0 flex items-center justify-center text-mid">Assembling point cloud…</p>
+            )}
+            <span className="t-label pointer-events-none absolute top-4 left-4 text-lo">
+              Concept model · original design{points ? ` · ${(points / 1000).toFixed(0)}k points` : ''}
+            </span>
+            <div className="absolute right-3 bottom-3 flex items-center gap-1 rounded-full border border-hi/10 bg-ink-950/70 p-1 backdrop-blur" role="group" aria-label="Camera view">
+              {VIEWS.map((v) => (
+                <button
+                  key={v.id}
+                  type="button"
+                  aria-pressed={view === v.id}
+                  onClick={() => {
+                    setView(v.id);
+                    setResetKey((k) => k + 1);
+                  }}
+                  className={`t-label rounded-full px-2.5 py-1.5 transition-colors ${view === v.id ? 'bg-signal/20 text-hi' : 'text-mid hover:text-hi'}`}
+                >
+                  {v.label}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setView('threeq');
+                  setResetKey((k) => k + 1);
+                }}
+                className="t-label rounded-full px-2.5 py-1.5 text-mid hover:text-hi"
+              >
+                Reset
+              </button>
+            </div>
+            <span className="t-label pointer-events-none absolute top-4 right-4 hidden text-lo sm:block">Drag to orbit</span>
           </div>
           {/* Mobile stage chips, directly under the figure */}
           <div role="tablist" aria-label="Stages" className="no-scrollbar -mx-[var(--gutter)] mt-3 flex gap-1.5 overflow-x-auto px-[var(--gutter)] lg:hidden">
@@ -148,7 +189,7 @@ export function PhysicalAIExplorer() {
         </div>
 
         {/* Stage selector + explanation */}
-        <div className="flex flex-col gap-4 lg:order-1 lg:col-span-5" data-reveal>
+        <div className="flex flex-col gap-4 lg:order-1" data-reveal>
           <div role="tablist" aria-label="Stages of a physical AI system" aria-orientation="vertical" className="hidden lg:grid lg:gap-1">
             {innovationStages.map((s, i) => {
               const on = i === idx;

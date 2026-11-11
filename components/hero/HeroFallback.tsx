@@ -39,7 +39,7 @@ export default function HeroFallback({ store }: { store: React.RefObject<MorphSt
           const z = A[i * 3 + 2] + (B[i * 3 + 2] - A[i * 3 + 2]) * f;
           const persp = 1 / (1 + z * 0.06);
           const acc = states.accents[seg][i] * (1 - f) + states.accents[seg + 1][i] * f;
-          ctx.fillStyle = acc > 0.5 ? 'rgba(224,149,74,0.9)' : 'rgba(217,211,199,0.45)';
+          ctx.fillStyle = acc > 0.5 ? 'rgba(76,141,240,0.9)' : 'rgba(213,222,236,0.45)';
           const s = acc > 0.5 ? 2.2 : 1.3;
           ctx.fillRect(cx + (x - z * 0.35) * sc * persp, cy - (y + z * 0.18) * sc * persp, s, s);
         }

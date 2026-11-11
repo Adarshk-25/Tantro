@@ -10,6 +10,15 @@ import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 import { PointCloudProjector } from '@/components/viz/PointCloudProjector';
 import { ChapterTransition } from './ChapterTransition';
 
+const FIGURE_CAPTION: Record<string, string> = {
+  gear: 'A controlled production cell',
+  mesh: 'Assets feeding a governed data network',
+  lattice: 'Equipment and the model that watches it',
+  strata: 'A layered industrial application',
+  arm: 'An original humanoid, as a point cloud',
+  rack: 'OT, edge and compute layers, segmented',
+};
+
 const CapabilityScene = dynamic(() => import('./capabilities/CapabilityScene'), { ssr: false });
 
 export function CapabilityExplorer() {
@@ -60,13 +69,13 @@ export function CapabilityExplorer() {
       }
       lede={capabilitiesCopy.lede}
     >
-      <div className="grid flex-1 gap-6 lg:grid-cols-12 lg:gap-8">
+      <div className="grid flex-1 gap-6 lg:grid-cols-[22fr_40fr_38fr] lg:gap-8">
         {/* Disciplines */}
         <div
           role="tablist"
           aria-label="Capabilities"
           aria-orientation="vertical"
-          className="grid grid-cols-2 gap-1 self-start sm:grid-cols-3 lg:col-span-3 lg:grid-cols-1"
+          className="grid grid-cols-2 gap-1 self-start sm:grid-cols-3 lg:grid-cols-1"
           data-reveal
         >
           {capabilities.map((c, i) => {
@@ -103,7 +112,7 @@ export function CapabilityExplorer() {
         </div>
 
         {/* Reading zone */}
-        <div id="cap-panel" role="tabpanel" aria-labelledby={`cap-tab-${cap.id}`} className="lg:col-span-5" data-reveal>
+        <div id="cap-panel" role="tabpanel" aria-labelledby={`cap-tab-${cap.id}`} data-reveal>
           <div key={cap.id} className="swap-in">
             <p className="t-label text-signal-deep">{cap.full}</p>
             <p className="mt-3 text-[1.25rem] leading-snug font-medium text-onlight md:text-[1.4rem]">{cap.statement}</p>
@@ -128,7 +137,7 @@ export function CapabilityExplorer() {
                 ['Engagement outcome', cap.outcome],
                 ['Value created', cap.value],
               ].map(([k, v], i) => (
-                <div key={k} className={`p-4 ${i === 2 ? 'bg-[#f3e6d6]' : 'bg-stone'}`}>
+                <div key={k} className={`p-4 ${i === 2 ? 'bg-[#e3edfc]' : 'bg-stone'}`}>
                   <dt className={`t-label ${i === 2 ? 'text-signal-deep' : 'text-onlight-mid'}`}>{k}</dt>
                   <dd className="t-small mt-2 text-onlight">{v}</dd>
                 </div>
@@ -141,8 +150,8 @@ export function CapabilityExplorer() {
         </div>
 
         {/* Figure */}
-        <div className="lg:col-span-4" data-reveal>
-          <div ref={figRef} className="relative aspect-square overflow-hidden rounded-2xl bg-[#0f1113] shadow-[0_40px_80px_-40px_rgb(0_0_0/0.6)] lg:aspect-auto lg:h-full lg:min-h-[420px]">
+        <div data-reveal>
+          <div ref={figRef} className="relative aspect-square overflow-hidden rounded-2xl bg-[#0b111c] shadow-[0_40px_80px_-40px_rgb(0_0_0/0.6)] lg:aspect-auto lg:h-full lg:min-h-[420px]">
             <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgb(232_149_74/0.12),transparent_60%)]" />
             {mode === 'webgl' && (
               <CapabilityScene index={formIndex} tier={tier} active={visible} reducedMotion={reduced} label={`Procedural form representing ${cap.full}`} />
@@ -150,17 +159,20 @@ export function CapabilityExplorer() {
             {mode === 'fallback' && (
               <PointCloudProjector
                 formIndex={formIndex}
-                ink="236,232,224"
-                accent="232,149,74"
+                ink="226,234,246"
+                accent="76,141,240"
                 className="absolute inset-0 h-full w-full"
                 label={`Procedural form representing ${cap.full}`}
               />
             )}
-            <div className="t-label pointer-events-none absolute inset-x-0 top-0 flex justify-between p-4 text-[#9d978e]">
+            <div className="t-label pointer-events-none absolute inset-x-0 top-0 flex justify-between p-4 text-[#94a2ba]">
               <span>Fig. {cap.index}</span>
               <span>Move pointer to tilt</span>
             </div>
-            <p className="pointer-events-none absolute inset-x-0 bottom-0 p-4 text-[0.95rem] font-medium text-[#ece8e0]">{cap.name}</p>
+            <p className="pointer-events-none absolute inset-x-0 bottom-0 p-4">
+              <span className="block text-[0.95rem] font-medium text-[#f3f6fc]">{cap.name}</span>
+              <span className="t-label text-[#94a2ba]">{FIGURE_CAPTION[cap.shape]}</span>
+            </p>
           </div>
         </div>
       </div>

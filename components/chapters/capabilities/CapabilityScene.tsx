@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { decodeHumanoid, loadHumanoidBuffer } from '../robotics/pointHumanoid';
 import { SceneCanvas } from '@/components/three/SceneCanvas';
 import { MorphCloud } from '@/components/three/MorphCloud';
 import type { QualityTier } from '@/lib/device';
 import { buildCapabilityForms } from '@/lib/particles/capabilityShapes';
 
-const COUNT: Record<QualityTier, number> = { low: 7000, medium: 12000, high: 20000 };
+const COUNT: Record<QualityTier, number> = { low: 9000, medium: 15000, high: 24000 };
 
 /** Lazy-loaded WebGL figure for the capability explorer. */
 export default function CapabilityScene({
@@ -22,7 +23,13 @@ export default function CapabilityScene({
   reducedMotion: boolean;
   label: string;
 }) {
-  const data = useMemo(() => buildCapabilityForms(COUNT[tier]), [tier]);
+  const [humanoid, setHumanoid] = useState<Float32Array | undefined>();
+  useEffect(() => {
+    loadHumanoidBuffer()
+      .then((buf) => setHumanoid(decodeHumanoid(buf, 32038).pos))
+      .catch(() => undefined);
+  }, []);
+  const data = useMemo(() => buildCapabilityForms(COUNT[tier], humanoid), [tier, humanoid]);
   const pointer = useRef({ x: 0, y: 0 });
   return (
     <div

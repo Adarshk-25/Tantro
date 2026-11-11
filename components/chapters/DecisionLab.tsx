@@ -11,7 +11,7 @@ import { createLineSim, stepLineSim, type LineSim } from './intelligence/bottlen
 const STEP_S = 3.2;
 const groups = ['Asset health', 'Quality', 'Operations', 'Energy'] as const;
 const phaseOf = (step: number): 0 | 1 | 2 => (step <= 1 ? 0 : step === 2 ? 1 : 2);
-const stepText = (u: UseCase, i: number) => [u.context, u.signals, u.model, u.insight, u.action, u.impact][i];
+const stepText = (u: UseCase, i: number) => [u.problem, u.data, u.analysis, u.output, u.action, u.value][i];
 
 function prewarmed(): LineSim {
   const s = createLineSim();
@@ -155,6 +155,9 @@ export function DecisionLab() {
               {u.formula}
             </p>
           </div>
+          <p className="border-b border-hi/8 px-4 py-2 text-[0.72rem] leading-snug text-lo md:px-5">
+            <span className="text-mid">{u.asset}.</span> {u.formulaNote}
+          </p>
           <canvas
             ref={canvasRef}
             className="block aspect-[4/3] w-full sm:aspect-[16/10] lg:aspect-auto lg:min-h-[300px] lg:flex-1"
@@ -223,9 +226,36 @@ export function DecisionLab() {
                       className={`t-small mt-1.5 block pl-7.5 ${on ? 'swap-in text-hi' : 'line-clamp-2 text-mid/80'}`}
                     >
                       {stepText(u, i)}
+                      {on && i === 3 && <span className="mt-1.5 block text-[0.8rem] text-cyan">Confidence: {u.confidence}</span>}
                     </span>
                   )}
                 </button>
+                {on && i === 1 && (
+                    <div className="swap-in mb-2 overflow-x-auto pr-3 pl-10.5">
+                      <table className="w-full text-left text-[0.7rem]">
+                        <thead className="t-label text-lo">
+                          <tr>
+                            {u.dataset.columns.map((c) => (
+                              <th key={c} className="pr-2 pb-1 font-normal">
+                                {c}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="t-mono-plain text-hi/85">
+                          {u.dataset.rows.map((r, ri) => (
+                            <tr key={ri} className="border-t border-hi/8">
+                              {r.map((c, ci) => (
+                                <td key={ci} className="py-1 pr-2 whitespace-nowrap">
+                                  {c}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
               </li>
             );
           })}

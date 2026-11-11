@@ -73,7 +73,7 @@ export function drawBottleneck(ctx: CanvasRenderingContext2D, w: number, h: numb
     // progress of the part in the station
     if (sim.holding[i]) {
       const k = Math.min(1, sim.timers[i] / CYCLE[i]);
-      ctx.fillStyle = constraint ? C.signalSoft : 'rgba(236,232,224,0.08)';
+      ctx.fillStyle = constraint ? C.signalSoft : 'rgba(226,234,246,0.08)';
       ctx.fillRect(x, by + bh * (1 - k), bw, bh * k);
       ctx.fillStyle = constraint ? C.signal : C.bone;
       ctx.fillRect(cx - 5, by + bh / 2 - 5, 10, 10);
@@ -88,7 +88,7 @@ export function drawBottleneck(ctx: CanvasRenderingContext2D, w: number, h: numb
       const sw = Math.max(4, (gap - bw - 16) / slots - 3);
       for (let k = 0; k < slots; k++) {
         const filled = k < sim.buffers[i];
-        ctx.fillStyle = filled ? (i === 1 && stage >= 2 ? C.alert : C.bone) : 'rgba(236,232,224,0.1)';
+        ctx.fillStyle = filled ? (i === 1 && stage >= 2 ? C.alert : C.bone) : 'rgba(226,234,246,0.1)';
         ctx.fillRect(bx0 + k * (sw + 3), by + bh / 2 - 3, sw, 6);
       }
     }
@@ -101,7 +101,7 @@ export function drawBottleneck(ctx: CanvasRenderingContext2D, w: number, h: numb
       const ph = Math.max(40, h - py - pad - 30);
       const segs: [number, string][] = [
         [st.working / total, constraint ? C.signal : C.bone],
-        [st.starved / total, 'rgba(236,232,224,0.18)'],
+        [st.starved / total, 'rgba(226,234,246,0.18)'],
         [st.blocked / total, C.alert],
       ];
       let acc = 0;
@@ -117,7 +117,7 @@ export function drawBottleneck(ctx: CanvasRenderingContext2D, w: number, h: numb
   if (stage >= 1) {
     const ly = h - pad;
     monoText(ctx, '■ WORKING', pad, ly, C.bone);
-    monoText(ctx, '■ STARVED', pad + 90, ly, 'rgba(236,232,224,0.4)');
+    monoText(ctx, '■ STARVED', pad + 90, ly, 'rgba(226,234,246,0.4)');
     monoText(ctx, '■ BLOCKED', pad + 180, ly, C.alert);
   }
   monoText(ctx, `OUTPUT ${sim.produced}`, w - pad, pad + 8, C.mid, 'right');

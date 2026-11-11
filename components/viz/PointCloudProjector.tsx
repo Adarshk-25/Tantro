@@ -11,8 +11,8 @@ import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
  */
 export function PointCloudProjector({
   formIndex,
-  ink = '21,23,26',
-  accent = '138,75,21',
+  ink = '15,23,38',
+  accent = '31,91,184',
   className,
   label,
 }: {

@@ -84,3 +84,33 @@ Each chapter is a viewport-height story panel (`ChapterTransition`). It has a co
 - `app/opengraph-image.tsx` generates a placeholder OG image. Replace it with a designed one.
 - All simulator data is synthetic and labelled as such on the page.
 - `public/tantro-logo.png` is unchanged and used as the favicon. The page header uses a typographic wordmark, because the logo's blue/purple gradient conflicts with the graphite/copper palette.
+
+## V3 notes
+
+### Brand system
+Colours are derived from the Tantro logomark (sampled from `public/tantro-logo.png`):
+
+| Token | Value | Use |
+| --- | --- | --- |
+| `--color-brand-blue` | `#2569D1` | primary actions, gradients |
+| `--color-brand-indigo` | `#5B55D6` | gradient midpoint |
+| `--color-brand-cyan` | `#16A8B7` | data, highlights |
+| `--color-brand-teal` | `#1BB088` | positive outcomes |
+| `--color-ink-950` | `#090D16` | background |
+| `--color-hi` / `--color-mid` | `#F3F6FC` / `#ABB8CE` | text |
+
+Warning and alert colours (`#F2B545`, `#F2707A`) are kept only where data needs them. `public/tantro-mark.png` is a transparent derivative of the original logo, used in the navigation; the original file is unchanged.
+
+### Humanoid point cloud
+The Physical AI humanoid is an original design, generated offline from signed-distance-field body parts:
+
+```bash
+node scripts/build-humanoid.mjs 96000
+```
+
+The script writes `public/models/humanoid-points.bin` (about 1.1 MB) and `public/models/humanoid-levels.json`. The levels are nested blue-noise sets, so every budget the client picks is evenly spaced. If you regenerate, copy the level boundaries into `HUMANOID_LEVELS` in `components/chapters/robotics/pointHumanoid.ts`. The client picks a level from the figure's on-screen size and the device tier.
+
+### Work pages and the "All Work shows nothing" fix
+- Every project has a route at `/work/[slug]`, with an interactive preview, problem, challenge, approach, validation status and related capabilities.
+- The work filter is stored in the URL (`/?work=research#work`). The project Back link and the browser's back/forward buttons restore it.
+- **Root cause of the empty list:** `MotionRoot` hid every `[data-reveal]` element and observed only elements that existed when it first ran. Cards mounted later stayed at opacity 0, for example after switching filters back to "All work". `MotionRoot` now registers late-mounted elements with a `MutationObserver`, and work cards no longer depend on reveal animation.

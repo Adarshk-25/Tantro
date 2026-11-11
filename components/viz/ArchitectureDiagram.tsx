@@ -118,8 +118,8 @@ export function ArchitectureDiagram({
     >
       <defs>
         <linearGradient id="arch-node" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stopColor="#24282d" />
-          <stop offset="1" stopColor="#1a1d21" />
+          <stop offset="0" stopColor="#1c2638" />
+          <stop offset="1" stopColor="#141c2b" />
         </linearGradient>
         <filter id="arch-glow" x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="3" />
@@ -139,8 +139,8 @@ export function ArchitectureDiagram({
             <rect
               {...box}
               rx={12}
-              fill={dmz ? 'rgb(232 149 74 / 0.06)' : 'rgb(236 232 224 / 0.035)'}
-              stroke={dmz ? 'rgb(232 149 74 / 0.45)' : 'rgb(236 232 224 / 0.16)'}
+              fill={dmz ? 'rgb(76 141 240 / 0.06)' : 'rgb(226 234 246 / 0.035)'}
+              stroke={dmz ? 'rgb(76 141 240 / 0.45)' : 'rgb(226 234 246 / 0.16)'}
               strokeDasharray={dmz ? '5 5' : undefined}
             />
             <text
@@ -149,7 +149,7 @@ export function ArchitectureDiagram({
               className="t-mono-plain"
               fontSize={vertical ? 9 : 10}
               letterSpacing="0.08em"
-              fill={dmz ? '#e8954a' : '#857f77'}
+              fill={dmz ? '#4c8df0' : '#7d8ba3'}
               style={{ display: vertical ? 'none' : undefined }}
             >
               {z.label.toUpperCase()}
@@ -162,12 +162,12 @@ export function ArchitectureDiagram({
       {lanes.map((ln) => {
         const b = L.laneBox[ln.id];
         return vertical ? (
-          <text key={ln.id} x={8} y={b.y + 14} fontSize={9.5} fill="#b5afa5" className="t-mono-plain" letterSpacing="0.08em">
+          <text key={ln.id} x={8} y={b.y + 14} fontSize={9.5} fill="#abb8ce" className="t-mono-plain" letterSpacing="0.08em">
             {ln.label.toUpperCase()}
           </text>
         ) : (
           <g key={ln.id}>
-            <text x={b.x + b.w / 2} y={L.H - 6} textAnchor="middle" fontSize={11.5} fill="#b5afa5">
+            <text x={b.x + b.w / 2} y={L.H - 6} textAnchor="middle" fontSize={11.5} fill="#abb8ce">
               {ln.label}
             </text>
           </g>
@@ -177,11 +177,11 @@ export function ArchitectureDiagram({
       {/* Links */}
       {links.map((l) => (
         <g key={l.id} opacity={l.active ? 1 : 0.18} className="transition-opacity duration-300">
-          <path id={l.id} d={l.d} fill="none" stroke="rgb(232 149 74 / 0.25)" strokeWidth={3} filter="url(#arch-glow)" />
-          <path d={l.d} fill="none" stroke="rgb(232 149 74 / 0.7)" strokeWidth={1.2} />
+          <path id={l.id} d={l.d} fill="none" stroke="rgb(76 141 240 / 0.25)" strokeWidth={3} filter="url(#arch-glow)" />
+          <path d={l.d} fill="none" stroke="rgb(76 141 240 / 0.7)" strokeWidth={1.2} />
           {animate &&
             [0, 1].map((k) => (
-              <circle key={k} r={k ? 2 : 3} fill="#ffc08a">
+              <circle key={k} r={k ? 2 : 3} fill="#a9cbfa">
                 <animateMotion dur={`${2.6 + (l.d.length % 7) * 0.15}s`} begin={`${k * 1.3}s`} repeatCount="indefinite">
                   <mpath href={`#${l.id}`} />
                 </animateMotion>
@@ -203,16 +203,16 @@ export function ArchitectureDiagram({
             onClick={() => setHover((h) => (h === n.id ? null : n.id))}
             className="cursor-pointer"
           >
-            <rect width={b.w} height={b.h} rx={10} fill="url(#arch-node)" stroke={on ? '#e8954a' : 'rgb(236 232 224 / 0.16)'}
+            <rect width={b.w} height={b.h} rx={10} fill="url(#arch-node)" stroke={on ? '#4c8df0' : 'rgb(226 234 246 / 0.16)'}
               strokeWidth={on ? 1.5 : 1} />
-            <rect x={10} y={b.h / 2 - 15} width={30} height={30} rx={8} fill="rgb(232 149 74 / 0.12)" />
-            <g color="#f0b57a">
+            <rect x={10} y={b.h / 2 - 15} width={30} height={30} rx={8} fill="rgb(76 141 240 / 0.12)" />
+            <g color="#9cc2fa">
               <Icon name={n.icon} size={18} x={16} y={b.h / 2 - 9} />
             </g>
-            <text x={50} y={b.h / 2 - (vertical ? 2 : 3)} fontSize={vertical ? 11.5 : 13.5} fill="#ece8e0" fontWeight={500}>
+            <text x={50} y={b.h / 2 - (vertical ? 2 : 3)} fontSize={vertical ? 11.5 : 13.5} fill="#f3f6fc" fontWeight={500}>
               {n.label}
             </text>
-            <text x={50} y={b.h / 2 + (vertical ? 12 : 14)} fontSize={vertical ? 9 : 10.5} fill="#9d978e">
+            <text x={50} y={b.h / 2 + (vertical ? 12 : 14)} fontSize={vertical ? 9 : 10.5} fill="#94a2ba">
               {n.sub}
             </text>
           </g>
@@ -229,8 +229,8 @@ export function ArchitectureDiagram({
           <g key={`t${l.id}`} transform={`translate(${mx} ${my})`} opacity={l.traced ? 1 : 0}
             pointerEvents="none"
             className="transition-opacity duration-300">
-            <rect x={-w / 2} y={-8.5} width={w} height={17} rx={8.5} fill="#121417" stroke="rgb(232 149 74 / 0.4)" />
-            <text textAnchor="middle" y={3.2} fontSize={fs} fill="#f0b57a" className="t-mono-plain">
+            <rect x={-w / 2} y={-8.5} width={w} height={17} rx={8.5} fill="#0e1420" stroke="rgb(76 141 240 / 0.4)" />
+            <text textAnchor="middle" y={3.2} fontSize={fs} fill="#9cc2fa" className="t-mono-plain">
               {l.label}
             </text>
           </g>

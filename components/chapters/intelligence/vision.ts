@@ -34,16 +34,16 @@ export function drawVision(ctx: CanvasRenderingContext2D, w: number, h: number, 
     ctx.globalAlpha = 1 - k * 0.6;
   }
   const grad = ctx.createLinearGradient(px, py, px + pw, py + ph);
-  grad.addColorStop(0, '#3a3e42');
-  grad.addColorStop(0.5, '#575c61');
-  grad.addColorStop(1, '#2e3236');
+  grad.addColorStop(0, '#34405a');
+  grad.addColorStop(0.5, '#56657f');
+  grad.addColorStop(1, '#283247');
   roundRect(ctx, px, py, pw, ph, ph * 0.12);
   ctx.fillStyle = grad;
   ctx.fill();
-  ctx.strokeStyle = 'rgba(236,232,224,0.35)';
+  ctx.strokeStyle = 'rgba(226,234,246,0.35)';
   ctx.stroke();
   // machining marks
-  ctx.strokeStyle = 'rgba(236,232,224,0.05)';
+  ctx.strokeStyle = 'rgba(226,234,246,0.05)';
   for (let i = 0; i < 26; i++) {
     ctx.beginPath();
     ctx.arc(px + pw * 0.5, py + ph * 0.5, (pw * 0.6 * (i + 1)) / 26, 0, Math.PI * 2);
@@ -57,19 +57,19 @@ export function drawVision(ctx: CanvasRenderingContext2D, w: number, h: number, 
   holes.forEach(([hx, hy]) => {
     ctx.beginPath();
     ctx.arc(px + pw * hx, py + ph * hy, ph * 0.13, 0, Math.PI * 2);
-    ctx.fillStyle = '#0b0c0d';
+    ctx.fillStyle = '#090d16';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(236,232,224,0.4)';
+    ctx.strokeStyle = 'rgba(226,234,246,0.4)';
     ctx.stroke();
   });
   roundRect(ctx, px + pw * 0.38, py + ph * 0.38, pw * 0.24, ph * 0.24, ph * 0.12);
-  ctx.fillStyle = '#0b0c0d';
+  ctx.fillStyle = '#090d16';
   ctx.fill();
   ctx.stroke();
   // the defect: a fine scratch near the right hole
   const sx = px + pw * 0.66;
   const sy = py + ph * 0.24;
-  ctx.strokeStyle = 'rgba(236,232,224,0.55)';
+  ctx.strokeStyle = 'rgba(226,234,246,0.55)';
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(sx, sy);
@@ -102,7 +102,7 @@ export function drawVision(ctx: CanvasRenderingContext2D, w: number, h: number, 
   if (stage === 0) {
     // acquisition scanline
     const ly = fy + ((t * 0.5) % 1) * fh;
-    ctx.fillStyle = 'rgba(224,149,74,0.12)';
+    ctx.fillStyle = 'rgba(76,141,240,0.12)';
     ctx.fillRect(fx, ly - 14, fw, 14);
     ctx.fillStyle = C.signal;
     ctx.fillRect(fx, ly, fw, 1);
@@ -118,10 +118,10 @@ export function drawVision(ctx: CanvasRenderingContext2D, w: number, h: number, 
       for (let j = 0; j < rows; j++) {
         const hot = i === 5 && (j === 1 || j === 2);
         const reveal = stage === 1 ? Math.min(1, Math.max(0, (t * 1.5) % 4 - (i + j) * 0.12)) : 1;
-        ctx.strokeStyle = `rgba(236,232,224,${0.1 * reveal})`;
+        ctx.strokeStyle = `rgba(226,234,246,${0.1 * reveal})`;
         ctx.strokeRect(px + i * cw, py + j * rh, cw, rh);
         if (hot && reveal > 0.5) {
-          ctx.fillStyle = `rgba(224,149,74,${stage === 1 ? 0.18 : 0.08})`;
+          ctx.fillStyle = `rgba(76,141,240,${stage === 1 ? 0.18 : 0.08})`;
           ctx.fillRect(px + i * cw, py + j * rh, cw, rh);
         }
       }
@@ -138,7 +138,7 @@ export function drawVision(ctx: CanvasRenderingContext2D, w: number, h: number, 
     ctx.strokeRect(bx, by, bw, bh);
     ctx.fillStyle = C.signal;
     ctx.fillRect(bx, by - 18, 128, 18);
-    monoText(ctx, 'SCRATCH · 0.93', bx + 6, by - 5, '#0b0c0d');
+    monoText(ctx, 'SCRATCH · 0.93', bx + 6, by - 5, '#090d16');
   }
 
   if (stage >= 2 && w > 520) {
@@ -150,9 +150,9 @@ export function drawVision(ctx: CanvasRenderingContext2D, w: number, h: number, 
       const y = by + i * 30;
       monoText(ctx, name, bx, y + 10, i === 0 ? C.hi : C.mid);
       monoText(ctx, p.toFixed(2), bx + 150, y + 10, i === 0 ? C.signal : C.mid, 'right');
-      ctx.fillStyle = 'rgba(236,232,224,0.1)';
+      ctx.fillStyle = 'rgba(226,234,246,0.1)';
       ctx.fillRect(bx, y + 15, 150, 4);
-      ctx.fillStyle = i === 0 ? C.signal : 'rgba(236,232,224,0.6)';
+      ctx.fillStyle = i === 0 ? C.signal : 'rgba(226,234,246,0.6)';
       ctx.fillRect(bx, y + 15, 150 * p, 4);
     });
     monoText(ctx, 'τ = 0.80 → REJECT', bx, by + 104, C.signal);

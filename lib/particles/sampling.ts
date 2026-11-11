@@ -149,7 +149,8 @@ export const volume =
     center[2] + (r() - 0.5) * size[2],
   ];
 
-export type Part = { w: number; s: Sampler; accent?: number };
+/** w = weight, s = sampler, accent = highlight amount, g = component group (for disassembly). */
+export type Part = { w: number; s: Sampler; accent?: number; g?: number };
 
 /** Fill `count` points from weighted parts into `out` starting at `offset`. */
 export function fillParts(
@@ -160,6 +161,7 @@ export function fillParts(
   parts: Part[],
   r: Rand,
   transform?: (p: Vec3) => Vec3,
+  groups?: Float32Array,
 ) {
   const total = parts.reduce((s, p) => s + p.w, 0);
   let written = 0;
@@ -173,7 +175,11 @@ export function fillParts(
       out[idx * 3 + 1] = p[1];
       out[idx * 3 + 2] = p[2];
       accent[idx] = part.accent ?? 0;
+      if (groups) groups[idx] = part.g ?? 0;
       written++;
     }
   });
 }
+
+/** Tag every part in a list with a component group. */
+export const group = (g: number, parts: Part[]): Part[] => parts.map((p) => ({ ...p, g }));

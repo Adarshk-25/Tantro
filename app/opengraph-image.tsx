@@ -16,7 +16,7 @@ export default function OpengraphImage() {
   });
   return new ImageResponse(
     (
-      <div style={{ width: '100%', height: '100%', display: 'flex', background: '#0b0c0d', color: '#ece8e0', position: 'relative' }}>
+      <div style={{ width: '100%', height: '100%', display: 'flex', background: '#090d16', color: '#f3f6fc', position: 'relative' }}>
         {dots.map((d, i) => (
           <div
             key={i}
@@ -27,7 +27,7 @@ export default function OpengraphImage() {
               width: d.accent ? 8 : 4,
               height: d.accent ? 8 : 4,
               borderRadius: 8,
-              background: d.accent ? '#e0954a' : 'rgba(217,211,199,0.55)',
+              background: d.accent ? '#4c8df0' : 'rgba(213,222,236,0.55)',
             }}
           />
         ))}
@@ -35,11 +35,11 @@ export default function OpengraphImage() {
           <div style={{ fontSize: 28, letterSpacing: 10, fontWeight: 700 }}>TANTRO</div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <div style={{ fontSize: 72, lineHeight: 1, fontWeight: 600, letterSpacing: -2 }}>Engineering intelligence</div>
-            <div style={{ fontSize: 72, lineHeight: 1, fontWeight: 600, letterSpacing: -2, color: '#a39e95' }}>
+            <div style={{ fontSize: 72, lineHeight: 1, fontWeight: 600, letterSpacing: -2, color: '#abb8ce' }}>
               into the physical world.
             </div>
           </div>
-          <div style={{ display: 'flex', fontSize: 22, color: '#e0954a', letterSpacing: 3 }}>TANTRO.IN</div>
+          <div style={{ display: 'flex', fontSize: 22, color: '#4c8df0', letterSpacing: 3 }}>TANTRO.IN</div>
         </div>
       </div>
     ),

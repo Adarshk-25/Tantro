@@ -12,14 +12,14 @@ export type DrawArgs = { w: number; h: number; t: number; phase: 0 | 1 | 2; k: n
 type F = { x: number; y: number; w: number; h: number };
 
 export const COL = {
-  hi: '#ece8e0',
-  bone: 'rgba(236,232,224,0.82)',
-  mid: '#b5afa5',
-  lo: '#857f77',
-  grid: 'rgba(236,232,224,0.06)',
-  axis: 'rgba(236,232,224,0.2)',
-  sig: '#e8954a',
-  sigSoft: 'rgba(232,149,74,0.16)',
+  hi: '#f3f6fc',
+  bone: 'rgba(226,234,246,0.82)',
+  mid: '#abb8ce',
+  lo: '#7d8ba3',
+  grid: 'rgba(226,234,246,0.06)',
+  axis: 'rgba(226,234,246,0.2)',
+  sig: '#4c8df0',
+  sigSoft: 'rgba(76,141,240,0.16)',
   alert: '#e46d55',
   ok: '#9cc3a4',
 };
@@ -103,10 +103,10 @@ function callout(ctx: Ctx, x: number, y: number, text: string, dx: number, dy: n
   const tw = ctx.measureText(text).width + 14;
   const bx = dx < 0 ? x + dx - tw : x + dx;
   const by = y + dy - 10;
-  ctx.fillStyle = 'rgba(11,12,13,0.92)';
+  ctx.fillStyle = 'rgba(9,13,22,0.92)';
   ctx.fillRect(bx, by, tw, 20);
   ctx.strokeRect(bx + 0.5, by + 0.5, tw - 1, 19);
-  txt(ctx, text, bx + 7, by + 14, color === COL.sig ? '#ffc08a' : color, 'left', 11);
+  txt(ctx, text, bx + 7, by + 14, color === COL.sig ? '#a9cbfa' : color, 'left', 11);
   ctx.globalAlpha = 1;
 }
 
@@ -131,7 +131,7 @@ function anomaly(ctx: Ctx, { w, h, t, phase, k }: DrawArgs) {
       ctx,
       [[f.x, y0 - f.h * 0.3], [f.x + f.w, y0 - f.h * 0.3]],
       [[f.x, y0 + f.h * 0.3], [f.x + f.w, y0 + f.h * 0.3]],
-      'rgba(236,232,224,0.06)',
+      'rgba(226,234,246,0.06)',
     );
     line(ctx, [[f.x, y0 - f.h * 0.3], [f.x + f.w, y0 - f.h * 0.3]], COL.axis, 1, [3, 5]);
     line(ctx, [[f.x, y0 + f.h * 0.3], [f.x + f.w, y0 + f.h * 0.3]], COL.axis, 1, [3, 5]);
@@ -179,9 +179,9 @@ function anomaly(ctx: Ctx, { w, h, t, phase, k }: DrawArgs) {
       const now = normal + (b >= 5 && b <= 6 ? 0.4 + 0.03 * Math.sin(t * 3 + b) : 0.02 * Math.sin(t * 2 + b));
       const bx = sx + b * (bw + 5);
       const base = sf.y + sf.h;
-      ctx.fillStyle = 'rgba(236,232,224,0.12)';
+      ctx.fillStyle = 'rgba(226,234,246,0.12)';
       ctx.fillRect(bx, base - normal * sf.h, bw, normal * sf.h);
-      ctx.fillStyle = phase === 2 && b >= 5 && b <= 6 ? COL.sig : 'rgba(236,232,224,0.7)';
+      ctx.fillStyle = phase === 2 && b >= 5 && b <= 6 ? COL.sig : 'rgba(226,234,246,0.7)';
       ctx.fillRect(bx + bw * 0.3, base - now * sf.h, bw * 0.4, now * sf.h);
     }
     txt(ctx, 'low → high frequency', sx, sf.y + sf.h + 14, COL.lo);
@@ -192,7 +192,7 @@ function health(ctx: Ctx, { w, h, phase, k }: DrawArgs) {
   const gaugeW = w > 520 ? 170 : 0;
   const f = area(w - gaugeW, h);
   grid(ctx, f, 6, 4);
-  txt(ctx, phase === 0 ? 'CONDITION INDICATORS (normalised)' : 'HEALTH INDEX · G-07', f.x, f.y - 10);
+  txt(ctx, phase === 0 ? 'DEGRADATION INDICATORS dᵢ (normalised)' : 'HEALTH INDEX HI · G-07 (illustrative composite)', f.x, f.y - 10);
   const days = 90;
   const now = 62;
   const X = (d: number) => f.x + (d / days) * f.w;
@@ -204,7 +204,7 @@ function health(ctx: Ctx, { w, h, phase, k }: DrawArgs) {
     ['vib RMS', 'kurtosis', 'temp rise'].forEach((name, j) => {
       const pts: [number, number][] = [];
       for (let d = 0; d <= now; d++) pts.push([X(d), Y(0.2 + j * 0.06 + (1 - hiAt(d)) * (0.55 - j * 0.12) + noise(d, j + 2) * 0.03)]);
-      line(ctx, pts, j === 0 ? COL.bone : j === 1 ? 'rgba(236,232,224,0.55)' : 'rgba(236,232,224,0.35)', 1.1);
+      line(ctx, pts, j === 0 ? COL.bone : j === 1 ? 'rgba(226,234,246,0.55)' : 'rgba(226,234,246,0.35)', 1.1);
       txt(ctx, name, X(now) + 4, pts[pts.length - 1][1] + 3, COL.lo);
     });
     ctx.globalAlpha = 1;
@@ -217,7 +217,7 @@ function health(ctx: Ctx, { w, h, phase, k }: DrawArgs) {
     line(ctx, pts, COL.hi, 1.6);
     const thr = 0.35;
     line(ctx, [[f.x, Y(thr)], [f.x + f.w, Y(thr)]], COL.alert, 1, [3, 4]);
-    txt(ctx, 'HI_min intervention', f.x + f.w, Y(thr) - 6, COL.alert, 'right');
+    txt(ctx, 'intervention threshold HI 35', f.x + f.w, Y(thr) - 6, COL.alert, 'right');
     ctx.globalAlpha = 1;
     if (phase === 2) {
       const r = ease(k);
@@ -234,7 +234,7 @@ function health(ctx: Ctx, { w, h, phase, k }: DrawArgs) {
       band(ctx, up, lo, COL.sigSoft);
       line(ctx, mid, COL.sig, 1.4, [4, 4]);
       const dHit = now + 19;
-      if (r > 0.7) callout(ctx, X(dHit), Y(thr), 'RUL ≈ 19 ± 6 days', -10, -40, (r - 0.7) / 0.3);
+      if (r > 0.7) callout(ctx, X(dHit), Y(thr), '≈ 19 days (80 %: 13–25)', -10, -40, (r - 0.7) / 0.3);
     }
   }
   txt(ctx, 'days', f.x + f.w, f.y + f.h + 18, COL.lo, 'right');
@@ -245,7 +245,7 @@ function health(ctx: Ctx, { w, h, phase, k }: DrawArgs) {
     const R = Math.min(gaugeW * 0.4, h * 0.26);
     ctx.lineWidth = 10;
     ctx.lineCap = 'round';
-    ctx.strokeStyle = 'rgba(236,232,224,0.1)';
+    ctx.strokeStyle = 'rgba(226,234,246,0.1)';
     ctx.beginPath();
     ctx.arc(cx, cy, R, Math.PI * 0.8, Math.PI * 2.2);
     ctx.stroke();
@@ -256,10 +256,10 @@ function health(ctx: Ctx, { w, h, phase, k }: DrawArgs) {
     ctx.arc(cx, cy, R, Math.PI * 0.8, Math.PI * (0.8 + 1.4 * shown));
     ctx.stroke();
     ctx.lineCap = 'butt';
-    txt(ctx, phase >= 1 ? shown.toFixed(2) : '—', cx, cy + 6, COL.hi, 'center', 24, false);
-    txt(ctx, 'HEALTH INDEX', cx, cy + 26, COL.mid, 'center', 9.5);
+    txt(ctx, phase >= 1 ? (shown * 100).toFixed(0) : '—', cx, cy + 6, COL.hi, 'center', 24, false);
+    txt(ctx, 'HI / 100', cx, cy + 26, COL.mid, 'center', 9.5);
     if (phase >= 1) {
-      txt(ctx, 'w: vib .45 · kurt .30 · temp .25', cx, cy + R + 30, COL.lo, 'center', 9);
+      txt(ctx, 'w: vib .40 · kurt .25 · temp .20 · I .15', cx, cy + R + 30, COL.lo, 'center', 9);
     }
   }
 }
@@ -278,7 +278,7 @@ function toolwear(ctx: Ctx, { w, h, phase, k }: DrawArgs) {
   // process-derived estimate (raw)
   const est: [number, number][] = [];
   for (let n = 0; n <= nNow; n += 6) est.push([X(n), Y(vb(n) + noise(n, 4) * 0.008)]);
-  line(ctx, est, phase === 0 ? COL.bone : 'rgba(236,232,224,0.35)', 1);
+  line(ctx, est, phase === 0 ? COL.bone : 'rgba(226,234,246,0.35)', 1);
   meas.forEach((n) => {
     ctx.fillStyle = COL.hi;
     ctx.beginPath();
@@ -344,7 +344,7 @@ function spc(ctx: Ctx, { w, h, phase, k }: DrawArgs) {
   }
   const pts: [number, number][] = [];
   for (let i = 0; i < N; i++) pts.push([X(i), Y(val(i))]);
-  line(ctx, pts, 'rgba(236,232,224,0.55)', 1);
+  line(ctx, pts, 'rgba(226,234,246,0.55)', 1);
   pts.forEach(([x, y], i) => {
     const flagged = phase === 2 && i >= 40;
     ctx.fillStyle = flagged ? COL.sig : COL.hi;
@@ -395,11 +395,11 @@ function rootcause(ctx: Ctx, { w, h, phase, k }: DrawArgs) {
     const y = f.y + i * rowH + rowH / 2;
     const top = i < 2 && phase === 2;
     txt(ctx, name, labW, y + 4, top ? COL.hi : COL.mid, 'right', 12, false);
-    ctx.fillStyle = 'rgba(236,232,224,0.06)';
+    ctx.fillStyle = 'rgba(226,234,246,0.06)';
     ctx.fillRect(f.x, y - 8, f.w, 16);
     if (phase >= 1) {
       const g = phase === 1 ? ease(k - i * 0.08) : 1;
-      ctx.fillStyle = top ? COL.sig : 'rgba(236,232,224,0.55)';
+      ctx.fillStyle = top ? COL.sig : 'rgba(226,234,246,0.55)';
       ctx.fillRect(f.x, y - 8, (v / 0.45) * f.w * g, 16);
       txt(ctx, `${Math.round(v * 100 * g)}%`, f.x + (v / 0.45) * f.w * g + 8, y + 4, top ? COL.sig : COL.mid);
     }
@@ -449,7 +449,7 @@ function oee(ctx: Ctx, { w, h, phase, k }: DrawArgs) {
     }
     if (!show) return;
     const big = phase === 2 && name === 'Changeovers';
-    ctx.fillStyle = kind === 'result' ? COL.sig : kind === 'total' ? 'rgba(236,232,224,0.55)' : big ? COL.sig : 'rgba(228,109,85,0.55)';
+    ctx.fillStyle = kind === 'result' ? COL.sig : kind === 'total' ? 'rgba(226,234,246,0.55)' : big ? COL.sig : 'rgba(228,109,85,0.55)';
     const hh = (Y(bottom) - Y(top)) * g;
     ctx.fillRect(x, Y(top), ww, hh);
     txt(ctx, kind === 'loss' ? `−${v}` : `${v}%`, x + ww / 2, Y(top) - 6, big || kind === 'result' ? COL.sig : COL.mid, 'center', 10.5);
@@ -477,7 +477,7 @@ function downtime(ctx: Ctx, { w, h, phase, k }: DrawArgs) {
       const v = Math.max(0, (0.18 + noise(d * 24 + hr, 2) * 0.14 + cluster) * weekend);
       const hot = phase >= 1 && cluster > 0.5;
       const a = 0.08 + v * 0.75;
-      ctx.fillStyle = hot && phase === 2 ? `rgba(232,149,74,${0.25 + v * 0.7})` : `rgba(236,232,224,${a})`;
+      ctx.fillStyle = hot && phase === 2 ? `rgba(76,141,240,${0.25 + v * 0.7})` : `rgba(226,234,246,${a})`;
       ctx.fillRect(f.x + hr * cw + 1, f.y + d * ch + 1, cw - 2, ch - 2);
     }
   }
@@ -539,13 +539,14 @@ function alarms(ctx: Ctx, { w, h, phase, k }: DrawArgs) {
   const f = area(w - paretoW, h, 40);
   grid(ctx, f, 6, 4);
   txt(ctx, 'ALARMS PER 10 MIN · one shift', f.x, f.y - 10);
+  if (phase === 2) callout(ctx, f.x + (11 / 48) * f.w, f.y + f.h * 0.12, 'root event: CMP-01 trip → 37 alarms', 18, 10, ease(k));
   const N = 48;
   const bw = f.w / N;
   const Y = (v: number) => f.y + f.h - (v / 30) * f.h;
   for (let i = 0; i < N; i++) {
     const flood = (i > 9 && i < 13) || (i > 27 && i < 30) || (i > 40 && i < 43);
     const v = Math.max(0.5, 3 + noise(i, 8) * 2.5 + (flood ? 18 + noise(i, 3) * 4 : 0));
-    ctx.fillStyle = phase >= 1 && flood ? COL.sig : v > 10 ? 'rgba(236,232,224,0.7)' : 'rgba(236,232,224,0.45)';
+    ctx.fillStyle = phase >= 1 && flood ? COL.sig : v > 10 ? 'rgba(226,234,246,0.7)' : 'rgba(226,234,246,0.45)';
     ctx.fillRect(f.x + i * bw + 1, Y(v), bw - 2, f.y + f.h - Y(v));
   }
   if (phase >= 1) {
@@ -571,7 +572,7 @@ function alarms(ctx: Ctx, { w, h, phase, k }: DrawArgs) {
       const y = g.y + i * rh;
       txt(ctx, name, g.x, y + 12, COL.mid, 'left', 9.5);
       const show = phase === 2 ? ease(k) : phase === 1 ? 0.3 : 0;
-      ctx.fillStyle = phase === 2 ? COL.sig : 'rgba(236,232,224,0.4)';
+      ctx.fillStyle = phase === 2 ? COL.sig : 'rgba(226,234,246,0.4)';
       ctx.fillRect(g.x, y + 17, (v / 0.2) * (g.w - 30) * show, 7);
       if (phase === 2 && chatter) txt(ctx, 'chatter', g.x + g.w, y + 12, COL.alert, 'right', 8.5);
     });
@@ -582,7 +583,7 @@ function guidance(ctx: Ctx, { w, h, phase, k }: DrawArgs) {
   const root = { x: w / 2, y: 40 };
   ctx.font = '12px Geist, sans-serif';
   const boxW = 210;
-  ctx.fillStyle = 'rgba(232,149,74,0.14)';
+  ctx.fillStyle = 'rgba(76,141,240,0.14)';
   ctx.strokeStyle = COL.sig;
   ctx.fillRect(root.x - boxW / 2, root.y - 18, boxW, 34);
   ctx.strokeRect(root.x - boxW / 2 + 0.5, root.y - 17.5, boxW - 1, 33);
@@ -600,20 +601,20 @@ function guidance(ctx: Ctx, { w, h, phase, k }: DrawArgs) {
     const cy = h * 0.46;
     const visible = phase >= 1 ? (phase === 1 ? ease(k * 1.5 - i * 0.15) : 1) : 0.25;
     ctx.globalAlpha = Math.max(0.15, visible);
-    ctx.strokeStyle = 'rgba(236,232,224,0.25)';
+    ctx.strokeStyle = 'rgba(226,234,246,0.25)';
     ctx.beginPath();
     ctx.moveTo(root.x, root.y + 16);
     ctx.bezierCurveTo(root.x, cy - 40, cx, root.y + 40, cx, cy - 22);
     ctx.stroke();
     const best = phase === 2 && i === 0;
-    ctx.fillStyle = best ? 'rgba(232,149,74,0.16)' : 'rgba(236,232,224,0.05)';
+    ctx.fillStyle = best ? 'rgba(76,141,240,0.16)' : 'rgba(226,234,246,0.05)';
     ctx.fillRect(cx - cw / 2, cy - 22, cw, 64);
-    ctx.strokeStyle = best ? COL.sig : 'rgba(236,232,224,0.18)';
+    ctx.strokeStyle = best ? COL.sig : 'rgba(226,234,246,0.18)';
     ctx.strokeRect(cx - cw / 2 + 0.5, cy - 21.5, cw - 1, 63);
     txt(ctx, name, cx, cy - 4, COL.hi, 'center', w < 520 ? 10 : 12, false);
     if (phase >= 1) {
       txt(ctx, `P = ${p.toFixed(2)}`, cx, cy + 14, best ? COL.sig : COL.mid, 'center', 10.5);
-      ctx.fillStyle = 'rgba(236,232,224,0.1)';
+      ctx.fillStyle = 'rgba(226,234,246,0.1)';
       ctx.fillRect(cx - cw / 2 + 10, cy + 24, cw - 20, 4);
       ctx.fillStyle = best ? COL.sig : COL.bone;
       ctx.fillRect(cx - cw / 2 + 10, cy + 24, (cw - 20) * p, 4);
@@ -627,7 +628,7 @@ function guidance(ctx: Ctx, { w, h, phase, k }: DrawArgs) {
       ctx.beginPath();
       ctx.arc(cx - cw / 2 + 12, sy, 9, 0, Math.PI * 2);
       ctx.fill();
-      txt(ctx, String(i + 1), cx - cw / 2 + 12, sy + 4, '#0b0c0d', 'center', 10.5);
+      txt(ctx, String(i + 1), cx - cw / 2 + 12, sy + 4, '#090d16', 'center', 10.5);
       txt(ctx, `Check ${check}`, cx - cw / 2 + 28, sy + 4, COL.hi, 'left', w < 520 ? 9.5 : 11, false);
       ctx.globalAlpha = 1;
     }
@@ -652,7 +653,7 @@ function energy(ctx: Ctx, { w, h, phase, k }: DrawArgs) {
   // production bars (context)
   for (let i = 0; i < N; i += 2) {
     if (!producing(i)) continue;
-    ctx.fillStyle = 'rgba(236,232,224,0.05)';
+    ctx.fillStyle = 'rgba(226,234,246,0.05)';
     ctx.fillRect(X(i), f.y, X(i + 2) - X(i), f.h);
   }
   txt(ctx, 'production', X(36), f.y + 12, COL.lo, 'center', 9);
@@ -667,7 +668,7 @@ function energy(ctx: Ctx, { w, h, phase, k }: DrawArgs) {
     const a = ease(k);
     for (let i = 0; i < N; i++) {
       if (producing(i)) continue;
-      ctx.fillStyle = `rgba(232,149,74,${0.35 * a})`;
+      ctx.fillStyle = `rgba(76,141,240,${0.35 * a})`;
       ctx.fillRect(X(i), Y(actual(i)), X(i + 1) - X(i) + 0.5, Y(pred(i)) - Y(actual(i)));
     }
   }

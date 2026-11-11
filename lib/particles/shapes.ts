@@ -9,6 +9,7 @@
  */
 
 import { mulberry32 } from '../random';
+import { connectedScene, integratedScene, intelligenceScene, type Anchor } from './heroScenes';
 import {
   boxEdges,
   boxSurface,
@@ -135,6 +136,10 @@ export function armParts(t: Xf = { at: [0, 0, 0], s: 1 }, withFloor = true): Sha
     { w: 1, s: nodeSampler(P([3.5, -2.0, -1.5]), R(0.09)), accent: 1 },
     { w: 1, s: nodeSampler(P([2.62, -0.98, 0.1]), R(0.08)), accent: 1 },
   ];
+  // Component groups for disassembly: base, turret, shoulder, upper arm, elbow, forearm, wrist/tool, cell.
+  const sg = [0, 0, 0, 0, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 3];
+  structure.forEach((p, i) => (p.g = i < sg.length ? sg[i] : 7));
+  [2, 2, 4, 4, 6, 1, 7, 7, 7, 7].forEach((g, i) => (nodes[i].g = g));
   return { nodes, structure };
 }
 
@@ -274,34 +279,95 @@ export type HeroStates = {
   count: number;
   positions: Float32Array[];
   accents: Float32Array[];
+  /** Component group per point, per state (0..7). */
+  groups: Float32Array[];
+  /** Exploded-view offset per state and group: [state][group] → xyz (flattened, 4 × 8 × 3). */
+  offsets: Float32Array;
+  anchors: Anchor[][];
   seeds: Float32Array;
 };
 
 export const HERO_STATE_COUNT = 4;
+export const GROUPS = 8;
+
+const ARM_ANCHORS: Anchor[] = [
+  { id: 's1-base', label: 'Base & J1', pos: [-0.6, -1.6, 0.9], g: 0 },
+  { id: 's1-shoulder', label: 'Shoulder J2', pos: [-0.6, -0.3, 0.6], g: 2 },
+  { id: 's1-elbow', label: 'Elbow J3', pos: [0.35, 1.5, 0.4], g: 4 },
+  { id: 's1-tool', label: 'Wrist & gripper', pos: [2.05, 0.6, 0.4], g: 6 },
+];
 
 export function buildHeroStates(count: number): HeroStates {
   const nodeCount = Math.round(count * 0.13);
-  const dustCount = Math.round(count * 0.06);
+  const dustCount = Math.round(count * 0.05);
   const structCount = count - nodeCount - dustCount;
-  const builders = [() => armParts({ at: [-0.6, 0, 0], s: 1 }), () => networkParts(), () => latticeParts(), () => integratedParts()];
+  const scenes: (ShapeParts & { anchors: Anchor[] })[] = [
+    { ...armParts({ at: [-0.6, 0, 0], s: 1 }), anchors: ARM_ANCHORS },
+    connectedScene(),
+    intelligenceScene(),
+    integratedScene(),
+  ];
 
   const positions: Float32Array[] = [];
   const accents: Float32Array[] = [];
-  builders.forEach((build, i) => {
-    const r = mulberry32(1000 + i * 17);
+  const groups: Float32Array[] = [];
+  const offsets = new Float32Array(HERO_STATE_COUNT * GROUPS * 3);
+  scenes.forEach((sc, si) => {
+    const r = mulberry32(1000 + si * 17);
     const pos = new Float32Array(count * 3);
     const acc = new Float32Array(count);
-    const { nodes, structure } = build();
-    fillParts(pos, acc, 0, nodeCount, nodes, r);
-    fillParts(pos, acc, nodeCount, structCount, structure, r);
-    // Dust shares the same seed in every state, so it barely moves: a stable depth field.
-    fillParts(pos, acc, nodeCount + structCount, dustCount, [{ w: 1, s: volume([0, 0, -1], [16, 10, 9]) }], mulberry32(99));
+    const grp = new Float32Array(count);
+    fillParts(pos, acc, 0, nodeCount, sc.nodes, r, undefined, grp);
+    fillParts(pos, acc, nodeCount, structCount, sc.structure, r, undefined, grp);
+    fillParts(pos, acc, nodeCount + structCount, dustCount, [{ w: 1, s: volume([0, 0, -1], [16, 10, 9]), g: 7 }], mulberry32(99), undefined, grp);
+    // dust & floor never move in the exploded view
+    for (let i = nodeCount + structCount; i < count; i++) grp[i] = 7;
+
+    // exploded view: each group moves away from the overall centroid
+    const sum = new Float64Array(GROUPS * 3);
+    const n = new Float64Array(GROUPS);
+    let cx = 0, cy = 0, cz = 0, cn = 0;
+    for (let i = 0; i < nodeCount + structCount; i++) {
+      const g = grp[i];
+      sum[g * 3] += pos[i * 3];
+      sum[g * 3 + 1] += pos[i * 3 + 1];
+      sum[g * 3 + 2] += pos[i * 3 + 2];
+      n[g]++;
+      if (g !== 7) {
+        cx += pos[i * 3];
+        cy += pos[i * 3 + 1];
+        cz += pos[i * 3 + 2];
+        cn++;
+      }
+    }
+    cx /= cn;
+    cy /= cn;
+    cz /= cn;
+    const fixed = si === 0 ? [7] : [4, 7];
+    for (let g = 0; g < GROUPS; g++) {
+      if (!n[g] || fixed.includes(g)) continue;
+      const gx = sum[g * 3] / n[g] - cx;
+      const gy = sum[g * 3 + 1] / n[g] - cy;
+      const gz = sum[g * 3 + 2] / n[g] - cz;
+      const o = (si * GROUPS + g) * 3;
+      // S1 (the arm) separates along its kinematic chain; scenes spread by layer
+      const k = si === 0 ? 0.48 : 0.45;
+      offsets[o] = gx * k;
+      offsets[o + 1] = gy * k;
+      offsets[o + 2] = gz * k + (si === 0 ? 0.08 : 0.18);
+    }
     positions.push(pos);
     accents.push(acc);
+    groups.push(grp);
   });
 
   const seeds = new Float32Array(count);
   const sr = mulberry32(5);
   for (let i = 0; i < count; i++) seeds[i] = sr();
-  return { count, positions, accents, seeds };
+  return { count, positions, accents, groups, offsets, anchors: scenes.map((s) => s.anchors), seeds };
+}
+
+/** Label anchors for every hero state, without sampling any geometry. */
+export function heroAnchors(): Anchor[][] {
+  return [ARM_ANCHORS, connectedScene().anchors, intelligenceScene().anchors, integratedScene().anchors];
 }

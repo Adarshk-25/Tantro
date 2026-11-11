@@ -1,15 +1,23 @@
 'use client';
 
 import { useFrame, useThree } from '@react-three/fiber';
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { SceneCanvas } from '@/components/three/SceneCanvas';
 import type { InnovationStage, StageId } from '@/content/innovation';
 import type { QualityTier } from '@/lib/device';
-import { MeshSurfaceSampler } from 'three/examples/jsm/math/MeshSurfaceSampler.js';
-import { applyPose, buildHumanoid } from './buildHumanoid';
+import { PART, buildPointHumanoid, loadHumanoidBuffer, poseHumanoid, snapBudget, type PointHumanoid } from './pointHumanoid';
 
-const SIGNAL = new THREE.Color('#ff9a45');
+export type ViewId = 'front' | 'threeq' | 'side';
+export const VIEW_AZIMUTH: Record<ViewId, number> = { front: 0, threeq: -0.6, side: -1.4 };
+
+const BLUE = new THREE.Color('#5b9bf5');
+const CYAN = new THREE.Color('#3cc4d2');
+const TEAL = new THREE.Color('#2ec79e');
+const SILVER = new THREE.Color('#dfe7f3');
+const TIER_CAP: Record<QualityTier, number> = { low: 20009, medium: 51909, high: 96157 };
+const FOV = 28;
+const TARGET_Y = 0.93;
 
 /** Reach → hold → return, every 5 s. */
 function reachCycle(t: number) {
@@ -20,40 +28,50 @@ function reachCycle(t: number) {
   };
   return ss(0.05, 0.4, p) * (1 - ss(0.62, 0.95, p));
 }
-const BONE = new THREE.Color('#ece8e0');
-const DENSITY: Record<QualityTier, number> = { low: 0.45, medium: 0.75, high: 1 };
 
-type Fadeable = { mat: THREE.Material & { opacity: number }; base: number };
-
-function fadeGroup(): { group: THREE.Group; mats: Fadeable[]; add: <T extends THREE.Object3D>(o: T, base: number) => T } {
+type Fade = { mat: THREE.Material & { opacity: number }; base: number };
+function layer() {
   const group = new THREE.Group();
-  const mats: Fadeable[] = [];
-  return {
-    group,
-    mats,
-    add(o, base) {
-      group.add(o);
-      o.traverse((c) => {
-        const m = (c as THREE.Mesh).material as (THREE.Material & { opacity: number }) | undefined;
-        if (m && !mats.some((x) => x.mat === m)) {
-          m.transparent = true;
-          m.depthWrite = false;
-          mats.push({ mat: m, base });
-        }
-      });
-      return o;
-    },
+  const mats: Fade[] = [];
+  const add = <T extends THREE.Object3D>(o: T, base: number) => {
+    group.add(o);
+    o.traverse((c) => {
+      const m = (c as THREE.Mesh).material as (THREE.Material & { opacity: number }) | undefined;
+      if (m && !mats.some((x) => x.mat === m)) {
+        m.transparent = true;
+        m.depthWrite = false;
+        mats.push({ mat: m, base });
+      }
+    });
+    return o;
   };
+  return { group, mats, add };
+}
+const lineMat = (c: THREE.Color, o = 1) => new THREE.LineBasicMaterial({ color: c, transparent: true, opacity: o });
+const dotsMat = (c: THREE.Color, size: number, o = 1) =>
+  new THREE.PointsMaterial({ color: c, size, sizeAttenuation: true, transparent: true, opacity: o, depthWrite: false });
+
+function boxEdges(c: THREE.Vector3, s: THREE.Vector3, m: THREE.LineBasicMaterial) {
+  const l = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(s.x, s.y, s.z)), m);
+  l.position.copy(c);
+  return l;
 }
 
-const basic = (color: THREE.Color, opacity = 1, additive = true) =>
-  new THREE.MeshBasicMaterial({ color, transparent: true, opacity, blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending, depthWrite: false });
-const lineMat = (color: THREE.Color, opacity = 1) => new THREE.LineBasicMaterial({ color, transparent: true, opacity });
-
-function boxEdges(center: THREE.Vector3, size: THREE.Vector3, mat: THREE.LineBasicMaterial) {
-  const l = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(size.x, size.y, size.z)), mat);
-  l.position.copy(center);
-  return l;
+/** Points on a box surface (for small objects in the scene). */
+function boxCloud(c: THREE.Vector3, s: THREE.Vector3, n: number) {
+  const a = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const face = Math.floor(Math.random() * 6);
+    const u = Math.random() - 0.5;
+    const v = Math.random() - 0.5;
+    const sg = face % 2 ? 0.5 : -0.5;
+    const ax = Math.floor(face / 2);
+    const p = ax === 0 ? [sg, u, v] : ax === 1 ? [u, sg, v] : [u, v, sg];
+    a.set([c.x + p[0] * s.x, c.y + p[1] * s.y, c.z + p[2] * s.z], i * 3);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(a, 3));
+  return g;
 }
 
 function World({
@@ -62,317 +80,345 @@ function World({
   reducedMotion,
   labels,
   labelEls,
-  narrow,
+  view,
+  resetKey,
+  onReady,
 }: {
   tier: QualityTier;
   stage: StageId;
   reducedMotion: boolean;
   labels: InnovationStage['labels'];
   labelEls: React.RefObject<(HTMLElement | null)[]>;
-  narrow: boolean;
+  view: ViewId;
+  resetKey: number;
+  onReady: (count: number) => void;
 }) {
-  const { camera, size } = useThree();
+  const { camera, size, gl } = useThree();
+  const [human, setHuman] = useState<PointHumanoid | null>(null);
   const fade = useRef<Record<StageId, number>>({ perception: 0, reasoning: 0, planning: 0, motion: 0, supervision: 0 });
   const reach = useRef(0);
+  const orbit = useRef({ az: VIEW_AZIMUTH[view], target: VIEW_AZIMUTH[view], drag: 0, el: 0.06, elTarget: 0.06 });
+  const tmp = useMemo(() => new THREE.Vector3(), []);
 
+  // Budget from the figure's on-screen height: aim for ~2.2 px dot spacing.
+  useEffect(() => {
+    let cancelled = false;
+    const figurePx = size.height * 0.84 * Math.min(window.devicePixelRatio || 1, 2);
+    const mPerPx = 1.85 / figurePx;
+    const spacing = 2.9 * mPerPx;
+    const budget = Math.min(TIER_CAP[tier], Math.round(96000 * Math.pow(0.0033 / spacing, 2)));
+    const dist = 1.05 / Math.tan(((FOV / 2) * Math.PI) / 180);
+    const dotPx = 1.85;
+    loadHumanoidBuffer()
+      .then((buf) => {
+        if (cancelled) return;
+        const h = buildPointHumanoid(buf, snapBudget(budget), dotPx * dist);
+        setHuman(h);
+        onReady(h.count);
+      })
+      .catch(() => onReady(0));
+    return () => {
+      cancelled = true;
+    };
+    // build once per tier; resizes keep the existing cloud
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tier]);
+  useEffect(() => () => human?.dispose(), [human]);
+
+  useEffect(() => {
+    orbit.current.target = VIEW_AZIMUTH[view];
+  }, [view, resetKey]);
+
+  // Constrained drag-to-orbit on the canvas.
+  useEffect(() => {
+    const el = gl.domElement;
+    let down = false;
+    let lastX = 0;
+    let lastY = 0;
+    const pd = (e: PointerEvent) => {
+      down = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      el.setPointerCapture(e.pointerId);
+    };
+    const pm = (e: PointerEvent) => {
+      if (!down) return;
+      const o = orbit.current;
+      o.target = Math.max(-1.6, Math.min(1.6, o.target + (e.clientX - lastX) * 0.008));
+      o.elTarget = Math.max(-0.05, Math.min(0.35, o.elTarget + (e.clientY - lastY) * 0.004));
+      lastX = e.clientX;
+      lastY = e.clientY;
+    };
+    const pu = () => (down = false);
+    el.addEventListener('pointerdown', pd);
+    el.addEventListener('pointermove', pm);
+    el.addEventListener('pointerup', pu);
+    el.addEventListener('pointercancel', pu);
+    el.style.touchAction = 'pan-y';
+    el.style.cursor = 'grab';
+    return () => {
+      el.removeEventListener('pointerdown', pd);
+      el.removeEventListener('pointermove', pm);
+      el.removeEventListener('pointerup', pu);
+      el.removeEventListener('pointercancel', pu);
+    };
+  }, [gl]);
+  useEffect(() => {
+    orbit.current.elTarget = 0.06;
+  }, [resetKey]);
+
+  // Scene props and per-stage overlays, built once the figure exists.
   const W = useMemo(() => {
-    const h = buildHumanoid(DENSITY[tier]);
-    h.root.rotation.y = -0.18;
-
-    // Work out where the hand lands at full reach, and build the cell around it.
-    applyPose(h, 1, 0, 0);
-    h.root.updateMatrixWorld(true);
-    const reachHand = h.anchors.hand.getWorldPosition(new THREE.Vector3());
-    applyPose(h, 0, 0, 0);
-    h.root.updateMatrixWorld(true);
-    const restHand = h.anchors.hand.getWorldPosition(new THREE.Vector3());
-
+    if (!human) return null;
     const scene = new THREE.Group();
-    scene.add(h.root);
-    const anchors: Record<string, THREE.Object3D> = { ...h.anchors };
-    const addAnchor = (name: string, p: THREE.Vector3) => {
+    scene.add(human.root);
+    const anchors: Record<string, THREE.Object3D> = {};
+    const anchor = (name: string, parent: THREE.Object3D, p: THREE.Vector3) => {
+      const o = new THREE.Object3D();
+      o.position.copy(p);
+      parent.add(o);
+      anchors[name] = o;
+    };
+    // body anchors
+    anchor('eye', human.joints[PART.head], new THREE.Vector3(0, 0.1, 0.11));
+    anchor('shoulder', human.joints[PART.upperArmR], new THREE.Vector3(0.08, 0.02, 0));
+    anchor('hand', human.joints[PART.handR], new THREE.Vector3(0.01, -0.1, 0.03));
+    anchor('core', human.joints[PART.torso], new THREE.Vector3(0, 0.31, 0.11));
+
+    // where the hand lands at full reach → place the work object there
+    poseHumanoid(human, 1, 0, 0);
+    human.root.updateMatrixWorld(true);
+    const reachHand = anchors.hand.getWorldPosition(new THREE.Vector3());
+    poseHumanoid(human, 0, 0, 0);
+    human.root.updateMatrixWorld(true);
+    const restHand = anchors.hand.getWorldPosition(new THREE.Vector3());
+
+    // Dotted floor
+    const fl: number[] = [];
+    for (let r = 0.14; r < 1.25; r += 0.045)
+      for (let a = 0; a < Math.PI * 2; a += 0.022 / r) fl.push(Math.cos(a) * r, 0.0, Math.sin(a) * r);
+    const fg = new THREE.BufferGeometry();
+    fg.setAttribute('position', new THREE.Float32BufferAttribute(fl, 3));
+    scene.add(
+      new THREE.Points(
+        fg,
+        new THREE.ShaderMaterial({
+          transparent: true,
+          depthWrite: false,
+          uniforms: { uPR: { value: 1 } },
+          vertexShader:
+            'uniform float uPR; varying float vF; void main(){ vec4 mv = modelViewMatrix*vec4(position,1.0); gl_Position = projectionMatrix*mv; vF = 1.0 - smoothstep(0.3, 1.25, length(position.xz)); gl_PointSize = 5.5*uPR/-mv.z; }',
+          fragmentShader:
+            'varying float vF; void main(){ if (length(gl_PointCoord-0.5)>0.5) discard; gl_FragColor = vec4(0.62,0.72,0.86, 0.32*vF); }',
+        }),
+      ),
+    );
+
+    // Minimal work shelf with two objects (target and obstacle)
+    const top = reachHand.y - 0.085;
+    const shelfC = new THREE.Vector3(reachHand.x + 0.08, top, reachHand.z);
+    const shelf = new THREE.Mesh(
+      new THREE.BoxGeometry(0.42, 0.012, 0.3),
+      new THREE.MeshBasicMaterial({ color: new THREE.Color('#5b9bf5'), transparent: true, opacity: 0.06, depthWrite: false }),
+    );
+    shelf.position.copy(shelfC);
+    scene.add(shelf, boxEdges(shelfC, new THREE.Vector3(0.42, 0.012, 0.3), lineMat(new THREE.Color('#7f9cc8'), 0.35)));
+    const targetC = new THREE.Vector3(reachHand.x, top + 0.04, reachHand.z);
+    scene.add(new THREE.Points(boxCloud(targetC, new THREE.Vector3(0.075, 0.06, 0.06), 700), dotsMat(SILVER, 0.0045, 0.9)));
+    const obstacleC = new THREE.Vector3(reachHand.x + 0.15, top + 0.07, reachHand.z - 0.08);
+    scene.add(new THREE.Points(boxCloud(obstacleC, new THREE.Vector3(0.06, 0.13, 0.06), 700), dotsMat(SILVER, 0.0045, 0.6)));
+    const objAnchor = (name: string, p: THREE.Vector3) => {
       const o = new THREE.Object3D();
       o.position.copy(p);
       scene.add(o);
       anchors[name] = o;
     };
+    objAnchor('target', targetC.clone().add(new THREE.Vector3(0, 0.05, 0)));
+    objAnchor('obstacle', obstacleC.clone().add(new THREE.Vector3(0, 0.09, 0)));
 
-    // Workbench and objects
-    const tableTop = reachHand.y - 0.09;
-    const tableC = new THREE.Vector3(reachHand.x + 0.06, tableTop - 0.015, reachHand.z + 0.02);
-    const tableMat = new THREE.MeshBasicMaterial({ color: new THREE.Color('#202328'), transparent: true, opacity: 0.85 });
-    const table = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.025, 0.38), tableMat);
-    table.position.copy(tableC);
-    scene.add(table);
-    scene.add(boxEdges(tableC, new THREE.Vector3(0.5, 0.025, 0.38), lineMat(BONE, 0.3)));
-    [-1, 1].forEach((sx) =>
-      [-1, 1].forEach((sz) => {
-        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.014, tableTop, 0.014), new THREE.MeshBasicMaterial({ color: new THREE.Color('#2a2e33') }));
-        leg.position.set(tableC.x + sx * 0.23, tableTop / 2 - 0.015, tableC.z + sz * 0.17);
-        scene.add(leg);
-      }),
-    );
-    const targetC = new THREE.Vector3(reachHand.x, tableTop + 0.035, reachHand.z);
-    const target = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.07, 0.07), new THREE.MeshBasicMaterial({ color: new THREE.Color('#5a5f66') }));
-    target.position.copy(targetC);
-    scene.add(target);
-    scene.add(boxEdges(targetC, new THREE.Vector3(0.09, 0.07, 0.07), lineMat(BONE, 0.5)));
-    const obstacleC = new THREE.Vector3(reachHand.x - 0.16, tableTop + 0.08, reachHand.z - 0.05);
-    const obstacle = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.16, 24), new THREE.MeshBasicMaterial({ color: new THREE.Color('#3f444a') }));
-    obstacle.position.copy(obstacleC);
-    scene.add(obstacle);
-    addAnchor('target', targetC.clone().add(new THREE.Vector3(0, 0.05, 0)));
-    addAnchor('obstacle', obstacleC.clone().add(new THREE.Vector3(0, 0.1, 0)));
-
-    // Floor: precision rings + warm light pool
-    [0.45, 0.8, 1.15, 1.5].forEach((r, i) => {
-      const ring = new THREE.Mesh(new THREE.RingGeometry(r - 0.002, r, 128), basic(BONE, 0.12 - i * 0.02, false));
-      ring.rotation.x = -Math.PI / 2;
-      scene.add(ring);
-    });
-    const pool = new THREE.Mesh(
-      new THREE.PlaneGeometry(4, 4),
-      new THREE.ShaderMaterial({
-        transparent: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-        uniforms: { uC: { value: SIGNAL } },
-        vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
-        fragmentShader:
-          'uniform vec3 uC; varying vec2 vUv; void main(){ float d=length(vUv-0.5)*2.0; gl_FragColor=vec4(uC, pow(max(0.0,1.0-d),3.0)*0.22); }',
-      }),
-    );
-    pool.rotation.x = -Math.PI / 2;
-    pool.position.y = 0.001;
-    scene.add(pool);
-
-    /* ---------- Perception ---------- */
-    const per = fadeGroup();
-    const eye = h.anchors.eye;
-    const eyeWorld = eye.getWorldPosition(new THREE.Vector3());
-    const fr = 0.24;
+    /* Perception: sensor frustum, detections, depth scan plane */
+    const per = layer();
+    const eyeW = anchors.eye.getWorldPosition(new THREE.Vector3());
+    const fr = 0.2;
     const corners = [
-      new THREE.Vector3(targetC.x - fr, tableTop + 0.002, targetC.z - fr * 0.8),
-      new THREE.Vector3(targetC.x + fr * 0.6, tableTop + 0.002, targetC.z - fr * 0.8),
-      new THREE.Vector3(targetC.x + fr * 0.6, tableTop + 0.002, targetC.z + fr * 0.8),
-      new THREE.Vector3(targetC.x - fr, tableTop + 0.002, targetC.z + fr * 0.8),
-    ];
-    const frPts: number[] = [];
+      [-fr, -0.7 * fr],
+      [fr, -0.7 * fr],
+      [fr, 0.7 * fr],
+      [-fr, 0.7 * fr],
+    ].map(([dx, dz]) => new THREE.Vector3(shelfC.x + dx, top + 0.006, shelfC.z + dz));
+    const fp: number[] = [];
     corners.forEach((c, i) => {
-      frPts.push(eyeWorld.x, eyeWorld.y, eyeWorld.z, c.x, c.y, c.z);
-      const n = corners[(i + 1) % 4];
-      frPts.push(c.x, c.y, c.z, n.x, n.y, n.z);
+      const nx = corners[(i + 1) % 4];
+      fp.push(...eyeW.toArray(), ...c.toArray(), ...c.toArray(), ...nx.toArray());
     });
-    const frGeo = new THREE.BufferGeometry();
-    frGeo.setAttribute('position', new THREE.Float32BufferAttribute(frPts, 3));
-    per.add(new THREE.LineSegments(frGeo, lineMat(SIGNAL, 0.7)), 0.7);
-    const faceGeo = new THREE.BufferGeometry();
-    const fv: number[] = [];
-    corners.forEach((c, i) => {
-      const n = corners[(i + 1) % 4];
-      fv.push(eyeWorld.x, eyeWorld.y, eyeWorld.z, c.x, c.y, c.z, n.x, n.y, n.z);
-    });
-    faceGeo.setAttribute('position', new THREE.Float32BufferAttribute(fv, 3));
-    per.add(new THREE.Mesh(faceGeo, new THREE.MeshBasicMaterial({ color: SIGNAL, transparent: true, opacity: 0.07, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false })), 0.07);
-    per.add(boxEdges(targetC, new THREE.Vector3(0.13, 0.11, 0.11), lineMat(SIGNAL, 1)), 1);
-    per.add(boxEdges(obstacleC, new THREE.Vector3(0.13, 0.2, 0.13), lineMat(SIGNAL, 0.8)), 0.8);
-    const lidar = new THREE.Mesh(new THREE.RingGeometry(0.97, 1.0, 160), basic(SIGNAL, 0.6));
-    lidar.rotation.x = -Math.PI / 2;
-    lidar.position.y = 0.004;
-    per.add(lidar, 0.6);
+    const fgeo = new THREE.BufferGeometry();
+    fgeo.setAttribute('position', new THREE.Float32BufferAttribute(fp, 3));
+    per.add(new THREE.LineSegments(fgeo, lineMat(CYAN, 0.65)), 0.65);
+    per.add(boxEdges(targetC, new THREE.Vector3(0.11, 0.09, 0.09), lineMat(CYAN, 1)), 1);
+    per.add(boxEdges(obstacleC, new THREE.Vector3(0.09, 0.16, 0.09), lineMat(BLUE, 0.9)), 0.9);
+    const scanPlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.46, 0.34),
+      new THREE.MeshBasicMaterial({ color: CYAN, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false }),
+    );
+    scanPlane.rotation.x = -Math.PI / 2;
+    scanPlane.position.copy(shelfC);
+    per.add(scanPlane, 0.12);
 
-    /* ---------- Reasoning ---------- */
-    const rea = fadeGroup();
-    const headW = h.head.getWorldPosition(new THREE.Vector3());
-    const gc = new THREE.Vector3(headW.x - 0.5, headW.y - 0.12, headW.z + 0.08);
-    const gNodes = [
-      [0, 0.12, 0],
-      [-0.14, 0.03, 0.05],
-      [0.13, 0.04, -0.03],
-      [-0.08, -0.1, 0.02],
-      [0.08, -0.11, 0.04],
-      [0.0, -0.01, 0.1],
-      [-0.2, -0.04, -0.06],
+    /* Reasoning: compact task graph beside the head */
+    const rea = layer();
+    const headW = human.joints[PART.head].getWorldPosition(new THREE.Vector3());
+    const gc = new THREE.Vector3(headW.x - 0.4, headW.y + 0.05, headW.z + 0.18);
+    const gN = [
+      [0, 0.09, 0],
+      [-0.11, 0.02, 0.03],
+      [0.1, 0.03, -0.02],
+      [-0.06, -0.08, 0.02],
+      [0.07, -0.08, 0.03],
+      [0, 0, 0.07],
     ].map(([x, y, z]) => new THREE.Vector3(gc.x + x, gc.y + y, gc.z + z));
-    const gEdges: [number, number][] = [
+    const gE: [number, number][] = [
       [0, 1],
       [0, 2],
       [1, 3],
       [2, 4],
       [3, 5],
       [4, 5],
-      [1, 6],
       [5, 0],
     ];
-    gNodes.forEach((p, i) => {
-      const s = new THREE.Mesh(new THREE.SphereGeometry(i === 5 ? 0.016 : 0.011, 16, 12), basic(i === 5 ? SIGNAL : BONE, 0.95));
+    gN.forEach((p, i) => {
+      const s = new THREE.Mesh(new THREE.SphereGeometry(i === 5 ? 0.012 : 0.008, 12, 8), new THREE.MeshBasicMaterial({ color: i === 5 ? TEAL : BLUE }));
       s.position.copy(p);
-      rea.add(s, 0.95);
+      rea.add(s, 1);
     });
-    const ge: number[] = [];
-    gEdges.forEach(([a, b]) => ge.push(...gNodes[a].toArray(), ...gNodes[b].toArray()));
-    ge.push(...gNodes[2].toArray(), headW.x, headW.y + 0.02, headW.z + 0.04);
-    const geG = new THREE.BufferGeometry();
-    geG.setAttribute('position', new THREE.Float32BufferAttribute(ge, 3));
-    rea.add(new THREE.LineSegments(geG, lineMat(SIGNAL, 0.55)), 0.55);
-    const pulses = [0, 1, 2].map(() => rea.add(new THREE.Mesh(new THREE.SphereGeometry(0.007, 8, 6), basic(SIGNAL, 1)), 1));
-    rea.add(boxEdges(targetC.clone().add(new THREE.Vector3(0, 0.045, 0)), new THREE.Vector3(0.1, 0.004, 0.08), lineMat(SIGNAL, 1)), 1);
-    addAnchor('graph', gNodes[0].clone().add(new THREE.Vector3(0, 0.05, 0)));
+    const ep: number[] = [];
+    gE.forEach(([a, b]) => ep.push(...gN[a].toArray(), ...gN[b].toArray()));
+    ep.push(...gN[2].toArray(), headW.x - 0.06, headW.y + 0.08, headW.z + 0.05);
+    const egeo = new THREE.BufferGeometry();
+    egeo.setAttribute('position', new THREE.Float32BufferAttribute(ep, 3));
+    rea.add(new THREE.LineSegments(egeo, lineMat(BLUE, 0.55)), 0.55);
+    rea.add(boxEdges(targetC, new THREE.Vector3(0.11, 0.09, 0.09), lineMat(TEAL, 1)), 1);
+    const pulses = [0, 1, 2].map(() => rea.add(new THREE.Mesh(new THREE.SphereGeometry(0.005, 8, 6), new THREE.MeshBasicMaterial({ color: CYAN })), 1));
+    objAnchor('graph', gN[0].clone().add(new THREE.Vector3(0, 0.05, 0)));
 
-    /* ---------- Planning ---------- */
-    const pla = fadeGroup();
+    /* Planning: collision-aware end-effector path */
+    const pla = layer();
     const path = new THREE.CatmullRomCurve3([
       restHand.clone(),
-      restHand.clone().lerp(reachHand, 0.35).add(new THREE.Vector3(0.02, 0.1, 0.1)),
-      obstacleC.clone().add(new THREE.Vector3(0.1, 0.2, 0.06)),
-      reachHand.clone().add(new THREE.Vector3(0, 0.1, 0)),
+      restHand.clone().lerp(reachHand, 0.35).add(new THREE.Vector3(0.03, 0.1, 0.12)),
+      reachHand.clone().lerp(restHand, 0.45).add(new THREE.Vector3(0.06, 0.12, 0.1)),
+      reachHand.clone().add(new THREE.Vector3(0, 0.09, 0)),
       reachHand.clone(),
     ]);
-    pla.add(new THREE.Mesh(new THREE.TubeGeometry(path, 120, 0.0045, 8), basic(SIGNAL, 0.95)), 0.95);
-    [0.25, 0.5, 0.75, 1].forEach((t) => {
-      const w = new THREE.Mesh(new THREE.TorusGeometry(0.022, 0.002, 6, 32), basic(SIGNAL, 0.9));
+    const pp: number[] = [];
+    for (let i = 0; i <= 140; i++) pp.push(...path.getPoint(i / 140).toArray());
+    const pgeo = new THREE.BufferGeometry();
+    pgeo.setAttribute('position', new THREE.Float32BufferAttribute(pp, 3));
+    pla.add(new THREE.Points(pgeo, dotsMat(CYAN, 0.009, 1)), 1);
+    [0.33, 0.66, 1].forEach((t) => {
+      const w = new THREE.Mesh(new THREE.TorusGeometry(0.018, 0.0018, 6, 32), new THREE.MeshBasicMaterial({ color: TEAL }));
       w.position.copy(path.getPoint(t));
-      w.lookAt(camera.position);
-      pla.add(w, 0.9);
+      w.rotation.x = Math.PI / 2;
+      pla.add(w, 1);
     });
-    const coll = new THREE.Mesh(new THREE.SphereGeometry(0.13, 20, 14), new THREE.MeshBasicMaterial({ color: SIGNAL, wireframe: true, transparent: true, opacity: 0.25 }));
+    const coll = new THREE.Mesh(new THREE.SphereGeometry(0.11, 18, 12), new THREE.MeshBasicMaterial({ color: BLUE, wireframe: true }));
     coll.position.copy(obstacleC);
-    pla.add(coll, 0.25);
-    addAnchor('waypoint', path.getPoint(0.75));
+    pla.add(coll, 0.22);
+    objAnchor('waypoint', path.getPoint(0.66));
 
-    /* ---------- Supervision ---------- */
-    const sup = fadeGroup();
-    for (let i = 0; i < 64; i++) {
-      const seg = new THREE.Mesh(new THREE.RingGeometry(1.18, 1.21, 6, 1, (i / 64) * Math.PI * 2, (Math.PI * 2) / 64 / 1.8), basic(SIGNAL, 0.75));
+    /* Supervision: protective zone on the floor + approval link */
+    const sup = layer();
+    for (let i = 0; i < 72; i++) {
+      const seg = new THREE.Mesh(
+        new THREE.RingGeometry(0.98, 1.0, 4, 1, (i / 72) * Math.PI * 2, (Math.PI * 2) / 72 / 1.8),
+        new THREE.MeshBasicMaterial({ color: TEAL, side: THREE.DoubleSide }),
+      );
       seg.rotation.x = -Math.PI / 2;
-      seg.position.y = 0.005;
-      sup.add(seg, 0.75);
+      seg.position.y = 0.003;
+      sup.add(seg, 0.85);
     }
-    const op = new THREE.Group();
-    // The operator: a dotted silhouette, deliberately less detailed than the robot.
-    const dots = (src: THREE.BufferGeometry, y: number) => {
-      const sampler = new MeshSurfaceSampler(new THREE.Mesh(src)).build();
-      const arr = new Float32Array(900 * 3);
-      const v = new THREE.Vector3();
-      for (let i = 0; i < 900; i++) {
-        sampler.sample(v);
-        arr.set([v.x, v.y, v.z], i * 3);
-      }
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.BufferAttribute(arr, 3));
-      const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: BONE, size: 0.008, transparent: true, opacity: 0.5, depthWrite: false }));
-      pts.position.y = y;
-      return pts;
-    };
-    const body = dots(new THREE.CapsuleGeometry(0.15, 0.5, 10, 28), 1.12);
-    body.scale.set(1, 1, 0.7);
-    const opHead = dots(new THREE.SphereGeometry(0.1, 20, 14), 1.6);
-    const legs = dots(new THREE.CapsuleGeometry(0.11, 0.62, 8, 22), 0.43);
-    legs.scale.set(1, 1, 0.75);
-    const tablet = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.15, 0.01), basic(SIGNAL, 0.8));
-    tablet.position.set(0, 1.12, 0.22);
-    tablet.rotation.x = -0.6;
-    op.add(body, opHead, legs);
-    op.position.set(1.75, 0, -0.85);
-    op.lookAt(0, 0, 0);
-    sup.add(op, 0.22);
-    op.add(tablet);
-    sup.mats.push({ mat: tablet.material, base: 0.8 });
-    op.updateMatrixWorld(true);
-    const tabW = tablet.getWorldPosition(new THREE.Vector3());
-    const linkGeo = new THREE.BufferGeometry().setFromPoints([tabW, headW.clone().add(new THREE.Vector3(0, 0.02, 0))]);
-    sup.add(new THREE.Line(linkGeo, new THREE.LineDashedMaterial({ color: SIGNAL, dashSize: 0.03, gapSize: 0.02, transparent: true, opacity: 0.9 })), 0.9).computeLineDistances();
-    const approval = sup.add(new THREE.Mesh(new THREE.SphereGeometry(0.012, 10, 8), basic(SIGNAL, 1)), 1);
-    addAnchor('operator', opHead.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0.16, 0)));
-    addAnchor('zone', new THREE.Vector3(-0.75, 0.02, 0.95));
+    objAnchor('zone', new THREE.Vector3(-0.72, 0.05, 0.7));
+    objAnchor('operator', new THREE.Vector3(-0.5, 1.45, 0.3));
 
     scene.add(per.group, rea.group, pla.group, sup.group);
-    const overlays: Record<StageId, { mats: Fadeable[] }> = {
-      perception: per,
-      reasoning: rea,
-      planning: pla,
-      motion: { mats: [] },
-      supervision: sup,
+    return {
+      scene,
+      anchors,
+      layers: { perception: per, reasoning: rea, planning: pla, motion: { mats: [] as Fade[] }, supervision: sup } as Record<StageId, { mats: Fade[] }>,
+      scanPlane,
+      top,
+      pulses,
+      gN,
+      gE,
+      floorMat: (scene.children.find((c) => c instanceof THREE.Points) as THREE.Points).material as THREE.ShaderMaterial,
     };
-    return { h, scene, overlays, anchors, lidar, pulses, gNodes, gEdges, approval, tabW, headW };
-  }, [tier, camera]);
-
-  const tmp = useMemo(() => new THREE.Vector3(), []);
-  const look = useMemo(() => new THREE.Vector3(0.2, 0.92, 0.15), []);
-  const camT = useRef(0);
+  }, [human]);
 
   useFrame((st, dt) => {
+    if (!human || !W) return;
     const t = reducedMotion ? 2 : st.clock.elapsedTime;
     const motion = reducedMotion ? 0 : 1;
     const f = fade.current;
-    (Object.keys(f) as StageId[]).forEach((k) => {
-      f[k] += ((k === stage ? 1 : 0) - f[k]) * (1 - Math.exp(-dt * 5));
-    });
-    // overlays
-    (Object.keys(W.overlays) as StageId[]).forEach((k) => W.overlays[k].mats.forEach((m) => (m.mat.opacity = m.base * f[k])));
-    W.overlays.perception.mats.length && (W.lidar.scale.setScalar(0.15 + ((t * 0.45) % 1) * 1.25));
+    (Object.keys(f) as StageId[]).forEach((k) => (f[k] += ((k === stage ? 1 : 0) - f[k]) * (1 - Math.exp(-dt * 5))));
+    (Object.keys(W.layers) as StageId[]).forEach((k) => W.layers[k].mats.forEach((m) => (m.mat.opacity = m.base * f[k])));
+    W.scanPlane.position.y = W.top + 0.01 + ((t * 0.5) % 1) * 0.14;
     W.pulses.forEach((p, i) => {
-      const [a, b] = W.gEdges[(Math.floor(t * 0.9) + i * 3) % W.gEdges.length];
-      p.position.lerpVectors(W.gNodes[a], W.gNodes[b], (t * 0.9 + i * 0.33) % 1);
+      const [a, b] = W.gE[(Math.floor(t * 0.9) + i * 2) % W.gE.length];
+      p.position.lerpVectors(W.gN[a], W.gN[b], (t * 0.9 + i * 0.33) % 1);
     });
-    W.approval.position.lerpVectors(W.tabW, W.headW, (t * 0.6) % 1);
 
-    // pose per stage
-    const want =
-      stage === 'motion'
-        ? reducedMotion
-          ? 1
-          : reachCycle(t)
-        : stage === 'planning'
-          ? 0.12
-          : stage === 'supervision'
-            ? 0.42
-            : 0;
+    // Pose for the stage: subtle, physically plausible
+    const want = stage === 'motion' ? (reducedMotion ? 0.8 : reachCycle(t)) : stage === 'planning' ? 0.1 : stage === 'supervision' ? 0.35 : 0;
     reach.current += (want - reach.current) * (1 - Math.exp(-dt * 4));
-    applyPose(W.h, reach.current, t, motion);
-    const headY = stage === 'supervision' ? 0.95 : stage === 'perception' || stage === 'planning' || stage === 'motion' ? 0.38 : 0.12;
-    const headX = stage === 'perception' || stage === 'planning' || stage === 'motion' ? 0.3 : stage === 'reasoning' ? -0.05 : 0.05;
-    W.h.head.rotation.y += (headY + Math.sin(t * 0.5) * 0.03 * motion - W.h.head.rotation.y) * (1 - Math.exp(-dt * 3));
-    W.h.head.rotation.x += (headX - W.h.head.rotation.x) * (1 - Math.exp(-dt * 3));
+    poseHumanoid(human, reach.current, t, motion);
+    const head = human.joints[PART.head];
+    const hy = stage === 'supervision' ? -0.5 : stage === 'reasoning' ? 0.08 : 0.42;
+    const hx = stage === 'supervision' || stage === 'reasoning' ? 0.04 : 0.28;
+    head.rotation.y += (hy - head.rotation.y) * (1 - Math.exp(-dt * 3));
+    head.rotation.x += (hx - head.rotation.x) * (1 - Math.exp(-dt * 3));
 
-    // part highlights
-    const hl = (part: keyof typeof W.h.mats, v: number) => {
-      const u = W.h.mats[part].uniforms.uHighlight;
-      u.value += (v - u.value) * (1 - Math.exp(-dt * 4));
-    };
-    hl('head', stage === 'perception' || stage === 'reasoning' ? 0.55 : 0);
-    hl('torso', stage === 'reasoning' ? 0.2 : 0);
-    hl('armR', stage === 'planning' || stage === 'motion' ? 0.5 : 0);
-    hl('hands', stage === 'motion' ? 0.7 : 0);
-    hl('joints', stage === 'motion' ? 0.8 : 0);
-    Object.values(W.h.mats).forEach((m) => {
+    // Part highlights
+    const hl = (parts: number[], v: number) =>
+      parts.forEach((p) => {
+        const u = human.materials[p].uniforms.uHighlight;
+        u.value += (v - u.value) * (1 - Math.exp(-dt * 4));
+      });
+    hl([PART.head], stage === 'perception' || stage === 'reasoning' ? 0.55 : 0);
+    hl([PART.upperArmR, PART.forearmR, PART.handR], stage === 'motion' ? 0.55 : stage === 'planning' ? 0.3 : 0);
+    hl([PART.torso, PART.neck, PART.pelvis, PART.upperArmL, PART.forearmL, PART.handL, PART.thighR, PART.thighL, PART.shinR, PART.shinL, PART.footR, PART.footL], 0);
+    human.materials.forEach((m) => {
       m.uniforms.uDim.value += ((stage === 'supervision' ? 0.82 : 1) - m.uniforms.uDim.value) * (1 - Math.exp(-dt * 4));
+      m.uniforms.uPixelRatio.value = gl.getPixelRatio();
     });
-    W.h.mats.head.uniforms.uScan.value = stage === 'perception' ? 1 : 0;
-    W.h.mats.head.uniforms.uScanY.value = 1.62 + Math.sin(t * 2.2) * 0.1;
-    W.h.jointRings.forEach((r) => ((r.material as THREE.MeshBasicMaterial).opacity = f.motion * 0.9));
+    human.occluderMat.uniforms.uPixelRatio.value = gl.getPixelRatio();
+    W.floorMat.uniforms.uPR.value = gl.getPixelRatio();
+    const headMat = human.materials[PART.head].uniforms;
+    headMat.uScan.value = stage === 'perception' ? 1 : 0;
+    headMat.uScanY.value = 1.66 + Math.sin(t * 2.4) * 0.07;
 
-    // camera: gentle orbit following the pointer
-    camT.current += ((reducedMotion ? 0 : st.pointer.x * 0.25) - camT.current) * (1 - Math.exp(-dt * 2));
-    const R = narrow ? 4.4 : 3.95;
-    const a = -0.5 + camT.current;
-    camera.position.set(Math.sin(a) * R, narrow ? 1.45 : 1.38, Math.cos(a) * R);
-    camera.lookAt(look);
+    // Camera: fit full body, orbit with constraints
+    const o = orbit.current;
+    o.az += (o.target - o.az) * (1 - Math.exp(-dt * 3));
+    o.el += (o.elTarget - o.el) * (1 - Math.exp(-dt * 3));
+    const aspect = size.width / Math.max(1, size.height);
+    const tanH = Math.tan(((FOV / 2) * Math.PI) / 180);
+    const dist = Math.max(1.06 / tanH, 0.92 / (tanH * aspect));
+    camera.position.set(Math.sin(o.az) * Math.cos(o.el) * dist, TARGET_Y + Math.sin(o.el) * dist, Math.cos(o.az) * Math.cos(o.el) * dist);
+    camera.lookAt(0.12, TARGET_Y, 0);
 
-    // screen-space labels
+    // Screen-space callouts
     labels.forEach((l, i) => {
       const el = labelEls.current?.[i];
-      const o = W.anchors[l.anchor];
-      if (!el || !o) return;
-      o.getWorldPosition(tmp).project(camera);
+      const a = W.anchors[l.anchor];
+      if (!el || !a) return;
+      a.getWorldPosition(tmp).project(camera);
       const x = (tmp.x * 0.5 + 0.5) * size.width;
       const y = (-tmp.y * 0.5 + 0.5) * size.height;
       el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
-      el.style.opacity = tmp.z < 1 ? String(Math.min(1, f[stage] * 1.4)) : '0';
+      el.style.opacity = tmp.z < 1 ? String(Math.min(1, f[stage] * 1.3)) : '0';
     });
   });
 
-  return <primitive object={W.scene} />;
+  return W ? <primitive object={W.scene} /> : null;
 }
 
 export default function HumanoidScene(props: {
@@ -382,15 +428,17 @@ export default function HumanoidScene(props: {
   reducedMotion: boolean;
   labels: InnovationStage['labels'];
   labelEls: React.RefObject<(HTMLElement | null)[]>;
-  narrow: boolean;
+  view: ViewId;
+  resetKey: number;
+  onReady: (count: number) => void;
 }) {
   return (
     <SceneCanvas
       tier={props.tier}
       active={props.active}
       className="absolute inset-0"
-      camera={{ position: [-1.6, 1.42, 2.9], fov: 34 }}
-      label={`An original humanoid robot at a workbench, showing the ${props.stage} stage of a physical AI system.`}
+      camera={{ position: [1.6, 1.0, 4.2], fov: FOV }}
+      label={`An original humanoid robot rendered as a dense point cloud, showing the ${props.stage} stage of a physical AI system.`}
     >
       <World {...props} />
     </SceneCanvas>

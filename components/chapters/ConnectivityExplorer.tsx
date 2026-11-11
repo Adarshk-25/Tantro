@@ -64,7 +64,7 @@ export function ConnectivityExplorer() {
         <div
           role="tablist"
           aria-label="Connectivity scenarios"
-          className="no-scrollbar -mx-[var(--gutter)] flex snap-x gap-1.5 overflow-x-auto px-[var(--gutter)] md:mx-0 md:grid md:grid-cols-4 md:overflow-visible md:px-0"
+          className="no-scrollbar -mx-[var(--gutter)] flex snap-x gap-1.5 overflow-x-auto px-[var(--gutter)] md:mx-0 md:grid md:grid-cols-5 md:overflow-visible md:px-0"
           data-reveal
         >
           {scenarios.map((s, i) => {
