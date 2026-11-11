@@ -36,9 +36,9 @@ export function getQualityTier(): QualityTier {
 }
 
 export const particleBudget: Record<QualityTier, number> = {
-  low: 6000,
-  medium: 11000,
-  high: 18000,
+  low: 18000,
+  medium: 34000,
+  high: 60000,
 };
 
 export const dprCap: Record<QualityTier, number> = {

@@ -90,29 +90,39 @@ export function ContactForm() {
       id="contact"
       index={contactCopy.index}
       eyebrow={contactCopy.eyebrow}
+      surface="ink"
       labelledBy="contact-title"
-      className="pb-28"
+      title={
+        <>
+          Bring us the problem <span className="text-signal">worth solving.</span>
+        </>
+      }
+      lede={contactCopy.body}
     >
-      <div className="grid gap-14 px-[var(--gutter)] pt-20 md:pt-28 lg:grid-cols-12 lg:gap-8">
-        <div className="lg:col-span-5">
-          <h2 id="contact-title" data-reveal className="t-display text-[clamp(2.6rem,1.3rem+4.4vw,6rem)]">
-            Bring us the problem <span className="text-signal">worth solving.</span>
-          </h2>
-          <p data-reveal className="t-lede mt-8 max-w-[28rem] text-mid">
-            {contactCopy.body}
-          </p>
-          <div data-reveal className="mt-12 border-t border-hi/12 pt-6">
-            <p className="t-mono text-lo">{contactCopy.directLabel}</p>
-            <a
-              href={`mailto:${site.email}`}
-              className="link-signal t-display-condensed mt-3 inline-block text-[clamp(1.6rem,1.2rem+1.4vw,2.4rem)] text-hi"
-            >
+      <div className="grid flex-1 gap-10 lg:grid-cols-12 lg:gap-8">
+        <div className="flex flex-col gap-8 lg:col-span-5" data-reveal>
+          <ol className="grid gap-4">
+            {contactCopy.next.map((n, i) => (
+              <li key={n.title} className="grid grid-cols-[2rem_1fr] gap-3">
+                <span className="t-mono-plain flex h-7 w-7 items-center justify-center rounded-full border border-hi/20 text-[0.72rem] text-signal">
+                  {i + 1}
+                </span>
+                <div>
+                  <p className="font-medium text-hi">{n.title}</p>
+                  <p className="t-small mt-1 text-mid">{n.text}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <div className="border-t border-hi/12 pt-6">
+            <p className="t-label text-lo">{contactCopy.directLabel}</p>
+            <a href={`mailto:${site.email}`} className="link-signal t-h3 mt-3 inline-block text-hi">
               {site.email}
             </a>
           </div>
         </div>
 
-        <div className="lg:col-span-6 lg:col-start-7" data-reveal>
+        <div className="panel p-5 md:p-8 lg:col-span-7" data-reveal>
           {status === 'sent' ? (
             <div ref={resultRef} tabIndex={-1} role="status" className="border-t border-signal pt-8 outline-none">
               <p className="t-mono text-signal">Message delivered</p>
@@ -123,8 +133,8 @@ export function ContactForm() {
               </button>
             </div>
           ) : (
-            <form ref={formRef} noValidate onSubmit={onSubmit} className="grid gap-9" aria-describedby="form-note">
-              <div className="grid gap-9 sm:grid-cols-2 sm:gap-6">
+            <form ref={formRef} noValidate onSubmit={onSubmit} className="grid gap-6" aria-describedby="form-note">
+              <div className="grid gap-6 sm:grid-cols-2">
                 <div>
                   <label htmlFor="f-name" className="t-mono text-mid">
                     Name
@@ -202,7 +212,7 @@ export function ContactForm() {
                 </div>
                 <textarea
                   {...fieldProps('message')}
-                  rows={5}
+                  rows={3}
                   className="field-line"
                   placeholder="What are you trying to improve, and what is in the way?"
                   onChange={(e) => set('message', e.target.value)}

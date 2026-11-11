@@ -11,13 +11,16 @@
   --color-ink-800: #1d2023;
   --color-ink-700: #2b2f33;
   --color-ink-600: #3b4045;
-  --color-bone-50: #efebe4;
+  --color-bone-50: #ebe7e0;
   --color-bone-100: #e5e0d7;
   --color-bone-200: #d6d0c5;
   --color-hi: #ece8e0;
-  --color-mid: #a39e95;
-  --color-lo: #75716a;
-  --color-signal: #e0954a;
+  --color-mid: #b5afa5;
+  --color-lo: #857f77;
+  --color-signal: #e8954a;
+  --color-signal-glow: #ff9f4a;
+  --color-stone: #e3ded5;
+  --color-graphite: #131518;
   --color-signal-soft: #f0b57a;
   --color-signal-deep: #8a4b15;
   --color-onlight: #15171a;
@@ -379,6 +382,238 @@ body {
 
 textarea.field-line {
   resize: vertical;
-  min-height: 8rem;
+  min-height: 5.5rem;
   line-height: 1.5;
+}
+
+
+/* ================================================================
+ * v2 — chapter system, viewport-aware type, depth surfaces
+ * ================================================================ */
+
+/* Headings scale with BOTH width and height so they never clip a viewport. */
+.t-h1 {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 108;
+  font-weight: 560;
+  letter-spacing: -0.035em;
+  line-height: 0.95;
+  font-size: clamp(2.4rem, min(5.4vw, 9.5vh), 6rem);
+  text-wrap: balance;
+}
+
+.t-h2 {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 106;
+  font-weight: 560;
+  letter-spacing: -0.03em;
+  line-height: 0.98;
+  font-size: clamp(2rem, min(3.9vw, 7.2vh), 4.4rem);
+  text-wrap: balance;
+}
+
+.t-h3 {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 96;
+  font-weight: 580;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  font-size: clamp(1.35rem, 1.1rem + 0.8vw, 1.9rem);
+  text-wrap: balance;
+}
+
+.t-body {
+  font-size: 1rem;
+  line-height: 1.62;
+  text-wrap: pretty;
+}
+
+.t-small {
+  font-size: 0.88rem;
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.t-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Surfaces with depth instead of flat paper */
+.surface-ink {
+  background:
+    radial-gradient(1200px 700px at 78% 30%, rgb(232 149 74 / 0.07), transparent 60%),
+    radial-gradient(900px 600px at 0% 100%, rgb(236 232 224 / 0.035), transparent 60%),
+    var(--color-ink-950);
+  color: var(--color-hi);
+}
+
+.surface-graphite {
+  background:
+    radial-gradient(1000px 600px at 20% 0%, rgb(236 232 224 / 0.045), transparent 60%),
+    radial-gradient(900px 700px at 100% 100%, rgb(232 149 74 / 0.06), transparent 60%),
+    var(--color-graphite);
+  color: var(--color-hi);
+}
+
+.surface-stone {
+  background:
+    radial-gradient(1100px 700px at 85% 10%, rgb(255 255 255 / 0.55), transparent 60%),
+    radial-gradient(900px 600px at 0% 100%, rgb(138 75 21 / 0.06), transparent 60%),
+    var(--color-stone);
+  color: var(--color-onlight);
+  color-scheme: light;
+}
+
+.surface-stone :focus-visible {
+  outline-color: var(--color-signal-deep);
+}
+
+.grid-fade {
+  background-image:
+    linear-gradient(to right, rgb(236 232 224 / 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(236 232 224 / 0.04) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse at 60% 50%, black 30%, transparent 75%);
+}
+
+/* Glass instrument panel */
+.panel {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.04), rgb(255 255 255 / 0.015));
+  border: 1px solid rgb(236 232 224 / 0.09);
+  border-radius: 14px;
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.04) inset,
+    0 30px 60px -30px rgb(0 0 0 / 0.6);
+}
+
+.panel-stone {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.7), rgb(255 255 255 / 0.45));
+  border: 1px solid rgb(21 23 26 / 0.08);
+  border-radius: 14px;
+  box-shadow: 0 24px 50px -32px rgb(21 23 26 / 0.35);
+}
+
+/* Selectable list rows used across explorers */
+.choice {
+  position: relative;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.85rem;
+  border-radius: 10px;
+  padding: 0.7rem 0.85rem;
+  text-align: left;
+  transition:
+    background-color 300ms,
+    color 300ms;
+}
+
+.choice:hover {
+  background: rgb(236 232 224 / 0.05);
+}
+
+.choice[aria-selected='true'],
+.choice[aria-pressed='true'] {
+  background: rgb(232 149 74 / 0.1);
+  color: var(--color-hi);
+}
+
+.choice[aria-selected='true']::before,
+.choice[aria-pressed='true']::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 22%;
+  bottom: 22%;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--color-signal);
+}
+
+.surface-stone .choice:hover {
+  background: rgb(21 23 26 / 0.05);
+}
+
+.surface-stone .choice[aria-selected='true'] {
+  background: rgb(138 75 21 / 0.1);
+  color: var(--color-onlight);
+}
+
+.surface-stone .choice[aria-selected='true']::before {
+  background: var(--color-signal-deep);
+}
+
+/* Interaction cue: pulsing ring on hotspots */
+@keyframes ping-ring {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+.ping {
+  animation: ping-ring 2s var(--ease-precise) infinite;
+}
+
+/* Progress fill used by auto-play controls */
+@keyframes fill-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.kbd {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 0.05rem 0.3rem;
+  opacity: 0.7;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.swap-in {
+  animation: fade-up 520ms var(--ease-precise) both;
+}
+
+@keyframes spark-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.spark-draw {
+  stroke-dasharray: 1;
+  animation: spark-draw 1.4s var(--ease-precise) both;
 }

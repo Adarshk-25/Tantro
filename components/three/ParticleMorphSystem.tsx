@@ -75,8 +75,8 @@ const vertex = /* glsl */ `
     vAccent = acc;
     vSeed = aSeed;
     float depth = -mv.z;
-    vFade = clamp(1.5 - depth * 0.06, 0.3, 1.0);
-    gl_PointSize = uSize * (1.0 + acc * 0.9) * uPixelRatio / depth;
+    vFade = clamp(1.55 - depth * 0.065, 0.22, 1.0);
+    gl_PointSize = max(1.0, uSize * (1.0 + acc * 0.25) * (0.75 + aSeed * 0.5) * uPixelRatio / depth);
   }
 `;
 
@@ -94,11 +94,13 @@ const fragment = /* glsl */ `
     vec2 c = gl_PointCoord - 0.5;
     float r = length(c);
     if (r > 0.5) discard;
-    float core = smoothstep(0.5, 0.0, r);
+    float core = smoothstep(0.5, 0.05, r);
     // Accent nodes pulse slowly, out of phase, like status lights on a panel.
-    float pulse = 0.75 + 0.25 * sin(uTime * 1.6 + vSeed * 40.0) * uMotion;
-    vec3 col = mix(uBase, uSignal, vAccent);
-    float alpha = core * vFade * mix(0.72, 0.85 * pulse, vAccent);
+    float pulse = 0.78 + 0.22 * sin(uTime * 1.6 + vSeed * 40.0) * uMotion;
+    // Subtle tonal variation keeps dense surfaces from looking flat.
+    vec3 base = mix(uBase, uBase * vec3(0.78, 0.8, 0.84), fract(vSeed * 7.31));
+    vec3 col = mix(base, uSignal, vAccent);
+    float alpha = core * vFade * mix(0.46, 0.72 * pulse, vAccent);
     gl_FragColor = vec4(col, alpha);
   }
 `;
@@ -173,9 +175,25 @@ export function ParticleMorphSystem({
           uPixelRatio: { value: 1 },
           uPointer: { value: new THREE.Vector3(99, 99, 0) },
           uPointerStrength: { value: 0 },
-          uBase: { value: new THREE.Color('#d9d3c7') },
-          uSignal: { value: new THREE.Color('#e0954a') },
+          uBase: { value: new THREE.Color('#efe6d8') },
+          uSignal: { value: new THREE.Color('#ff9a45') },
         },
+      }),
+    [],
+  );
+
+  // A soft warm light pool under the machine; strongest when the arm is formed.
+  const glow = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        uniforms: { uOpacity: { value: 1 }, uColor: { value: new THREE.Color('#ff8a3a') } },
+        vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+        fragmentShader: `uniform float uOpacity; uniform vec3 uColor; varying vec2 vUv;
+          void main(){ float d = length(vUv - 0.5) * 2.0; float g = pow(max(0.0, 1.0 - d), 2.6);
+          gl_FragColor = vec4(uColor, g * 0.22 * uOpacity); }`,
       }),
     [],
   );
@@ -195,8 +213,10 @@ export function ParticleMorphSystem({
     u.uTime.value = reducedMotion ? 0 : state.clock.elapsedTime;
     u.uMotion.value = reducedMotion ? 0 : 1;
     u.uPixelRatio.value = gl.getPixelRatio();
-    u.uSize.value = narrow ? 40 : 36;
+    u.uSize.value = narrow ? 20 : 17;
     u.uPointerStrength.value = sm.strength;
+    // glow follows the machine: full at S1, gone for network/model, partial for the integrated loop
+    glow.uniforms.uOpacity.value = Math.max(0, 1 - sm.morph) + Math.max(0, sm.morph - 2) * 0.45;
 
     // Camera follows the story, plus a slight pointer parallax.
     const keys = narrow ? CAMERA_NARROW : CAMERA_WIDE;
@@ -219,5 +239,12 @@ export function ParticleMorphSystem({
     if (ray.ray.intersectPlane(raycastPlane, hit)) u.uPointer.value.copy(hit);
   });
 
-  return <points ref={points} geometry={geometry} material={material} frustumCulled={false} />;
+  return (
+    <>
+      <mesh position={[-0.6, -2.09, 0]} rotation={[-Math.PI / 2, 0, 0]} material={glow}>
+        <planeGeometry args={[10, 10]} />
+      </mesh>
+      <points ref={points} geometry={geometry} material={material} frustumCulled={false} />
+    </>
+  );
 }

@@ -45,45 +45,95 @@ const xf = (p: Vec3, t: Xf): Vec3 => [t.at[0] + p[0] * t.s, t.at[1] + p[1] * t.s
 export function armParts(t: Xf = { at: [0, 0, 0], s: 1 }, withFloor = true): ShapeParts {
   const P = (p: Vec3) => xf(p, t);
   const R = (v: number) => v * t.s;
-  const base: Vec3 = P([0, -2, 0]);
-  const shoulder: Vec3 = P([0, -0.85, 0]);
-  const elbow: Vec3 = P([0.95, 1.05, 0.05]);
-  const wrist: Vec3 = P([2.35, 0.55, 0.1]);
-  const flange: Vec3 = P([2.55, 0.15, 0.1]);
-  const zAxis: Vec3 = [0, 0, 1];
-  const fore = [wrist[0] - elbow[0], wrist[1] - elbow[1], wrist[2] - elbow[2]] as Vec3;
+  const Y: Vec3 = [0, 1, 0];
+  const Z: Vec3 = [0, 0, 1];
+  const shoulder: Vec3 = [0, -0.85, 0];
+  const elbow: Vec3 = [0.95, 1.05, 0.05];
+  const wrist: Vec3 = [2.3, 0.6, 0.08];
+  const flange: Vec3 = [2.55, 0.2, 0.08];
+  const lerp3 = (a: Vec3, b: Vec3, k: number): Vec3 => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
+  const dir = (a: Vec3, b: Vec3): Vec3 => [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  const upperDir = dir(shoulder, elbow);
+  const foreDir = dir(elbow, wrist);
+  const toolDir = dir(wrist, flange);
+  /** A joint housing: a short cylinder along z with capped, seamed ends. */
+  const housing = (c: Vec3, r: number, half: number, w: number): Part[] => [
+    { w: w, s: tube(P([c[0], c[1], c[2] - half]), P([c[0], c[1], c[2] + half]), R(r)) },
+    { w: w * 0.35, s: disc(P([c[0], c[1], c[2] + half]), Z, R(r)) },
+    { w: w * 0.35, s: disc(P([c[0], c[1], c[2] - half]), Z, R(r)) },
+  ];
 
   const structure: Part[] = [
-    // base plinth
-    { w: 6, s: ring(base, [0, 1, 0], R(1.15), 0.01) },
-    { w: 4, s: ring(P([0, -1.78, 0]), [0, 1, 0], R(1.15), 0.01) },
-    { w: 5, s: disc(P([0, -1.78, 0]), [0, 1, 0], R(1.1)) },
-    // turret
-    { w: 7, s: tube(P([0, -1.78, 0]), P([0, -1.05, 0]), R(0.55), R(0.5)) },
-    // upper arm, forearm, wrist
-    { w: 16, s: tube(shoulder, elbow, R(0.34), R(0.27)) },
-    { w: 11, s: tube(elbow, wrist, R(0.24), R(0.17)) },
-    { w: 3, s: tube(wrist, flange, R(0.14), R(0.12)) },
-    // gripper fingers
-    { w: 1.5, s: boxEdges(P([2.62, -0.2, -0.06]), [R(0.07), R(0.55), R(0.06)]) },
-    { w: 1.5, s: boxEdges(P([2.62, -0.2, 0.26]), [R(0.07), R(0.55), R(0.06)]) },
-    // the part being handled, on the work surface
-    { w: 3, s: boxSurface(P([2.62, -1.72, 0.1]), [R(0.5), R(0.3), R(0.5)]) },
-    // cable loom along the arm
-    { w: 2, s: curve(P([-0.3, -1.2, -0.3]), P([0.2, 0.6, -0.45]), P([1.2, 1.25, -0.25]), 0.01) },
+    // base plinth with seams and a lightly filled top
+    { w: 7, s: tube(P([0, -2.05, 0]), P([0, -1.86, 0]), R(1.05)) },
+    { w: 3, s: ring(P([0, -1.86, 0]), Y, R(1.05), 0.003) },
+    { w: 3, s: ring(P([0, -2.05, 0]), Y, R(1.05), 0.003) },
+    { w: 3, s: disc(P([0, -1.86, 0]), Y, R(1.02)) },
+    // J1 turret
+    { w: 9, s: tube(P([0, -1.86, 0]), P([0, -1.22, 0]), R(0.62), R(0.55)) },
+    { w: 1.5, s: ring(P([0, -1.55, 0]), Y, R(0.6), 0.003) },
+    // J2 shoulder housing + side motor pod
+    ...housing(shoulder, 0.45, 0.5, 9),
+    { w: 2.5, s: tube(P([-0.12, -0.85, 0.5]), P([-0.12, -0.85, 0.95]), R(0.2)) },
+    { w: 0.8, s: disc(P([-0.12, -0.85, 0.95]), Z, R(0.2)) },
+    // upper arm link, tapered, with seams near each end
+    { w: 20, s: tube(lerp3(P(shoulder), P(elbow), 0.08), P(elbow), R(0.31), R(0.25)) },
+    { w: 1.2, s: ring(lerp3(P(shoulder), P(elbow), 0.22), upperDir, R(0.3), 0.003) },
+    { w: 1.2, s: ring(lerp3(P(shoulder), P(elbow), 0.86), upperDir, R(0.26), 0.003) },
+    // J3 elbow housing and counterweight behind it
+    ...housing(elbow, 0.32, 0.36, 6),
+    { w: 3, s: tube(P(elbow), lerp3(P(elbow), P(wrist), -0.3), R(0.22), R(0.2)) },
+    // forearm
+    { w: 13, s: tube(P(elbow), P(wrist), R(0.22), R(0.15)) },
+    { w: 1, s: ring(lerp3(P(elbow), P(wrist), 0.78), foreDir, R(0.17), 0.003) },
+    // J5 wrist and J6 flange
+    ...housing(wrist, 0.17, 0.17, 2.4),
+    { w: 2.4, s: tube(P(wrist), P(flange), R(0.13), R(0.11)) },
+    { w: 1, s: disc(P(flange), toolDir, R(0.14)) },
+    // gripper
+    { w: 2, s: boxSurface(P([2.62, 0.02, 0.08]), [R(0.26), R(0.14), R(0.34)]) },
+    { w: 1.4, s: boxSurface(P([2.62, -0.22, -0.06]), [R(0.06), R(0.38), R(0.05)]) },
+    { w: 1.4, s: boxSurface(P([2.62, -0.22, 0.22]), [R(0.06), R(0.38), R(0.05)]) },
+    // dress pack: cable loom following the arm
+    { w: 2.5, s: curve(P([-0.35, -1.25, -0.35]), P([0.1, 0.7, -0.5]), P([1.1, 1.32, -0.3]), 0.008) },
   ];
-  if (withFloor) structure.push({ w: 12, s: floorGrid(P([0.6, -2.05, 0]), R(3.4), R(0.22)) });
+  if (withFloor) {
+    // work table with the part being handled
+    structure.push(
+      { w: 3, s: boxEdges(P([2.62, -1.4, 0.1]), [R(1.3), R(0.06), R(1.1)], 0.003) },
+      { w: 1.6, s: boxSurface(P([2.62, -1.37, 0.1]), [R(1.24), R(0.001), R(1.04)]) },
+      { w: 1, s: segment(P([2.05, -1.43, -0.38]), P([2.05, -2.05, -0.38]), 0.004) },
+      { w: 1, s: segment(P([3.2, -1.43, 0.6]), P([3.2, -2.05, 0.6]), 0.004) },
+      { w: 1, s: segment(P([2.05, -1.43, 0.6]), P([2.05, -2.05, 0.6]), 0.004) },
+      { w: 3, s: boxSurface(P([2.62, -1.22, 0.1]), [R(0.42), R(0.3), R(0.42)]) },
+    );
+    // the floor: concentric precision rings and radial gauge lines
+    [1.45, 2.25, 3.05, 3.85].forEach((rad, i) =>
+      structure.push({ w: 3.2 - i * 0.4, s: ring(P([0, -2.06, 0]), Y, R(rad), 0.002) }),
+    );
+    for (let i = 0; i < 36; i++) {
+      const a = (i / 36) * Math.PI * 2;
+      const r0 = i % 3 === 0 ? 1.25 : 3.05;
+      structure.push({
+        w: 0.22,
+        s: segment(P([Math.cos(a) * r0, -2.06, Math.sin(a) * r0]), P([Math.cos(a) * 3.85, -2.06, Math.sin(a) * 3.85]), 0.002),
+      });
+    }
+    structure.push({ w: 4, s: floorGrid(P([0, -2.07, 0]), R(4.4), R(0.16)) });
+  }
 
   const nodes: Part[] = [
-    { w: 3, s: ring(shoulder, zAxis, R(0.48), 0.01), accent: 1 },
-    { w: 3, s: ring(elbow, zAxis, R(0.38), 0.01), accent: 1 },
-    { w: 2, s: ring(wrist, fore, R(0.24), 0.01), accent: 1 },
-    { w: 2, s: ring(P([0, -1.4, 0]), [0, 1, 0], R(0.6), 0.01), accent: 1 },
-    // sensors placed around the cell
-    { w: 1, s: sphere(P([-1.7, -1.9, 1.2]), R(0.07)), accent: 1 },
-    { w: 1, s: sphere(P([2.9, -1.9, -1.3]), R(0.07)), accent: 1 },
-    { w: 1, s: sphere(P([-1.4, -1.9, -1.6]), R(0.07)), accent: 1 },
-    { w: 1, s: sphere(P([3.6, -1.9, 1.1]), R(0.07)), accent: 1 },
+    { w: 3, s: ring(P([0, -0.85, 0.51]), Z, R(0.45), 0.004), accent: 0.65 },
+    { w: 3, s: ring(P([0, -0.85, -0.51]), Z, R(0.45), 0.004), accent: 0.65 },
+    { w: 2, s: ring(P([elbow[0], elbow[1], elbow[2] + 0.37]), Z, R(0.32), 0.004), accent: 0.65 },
+    { w: 2, s: ring(P([elbow[0], elbow[1], elbow[2] - 0.37]), Z, R(0.32), 0.004), accent: 0.65 },
+    { w: 1.5, s: ring(P(flange), toolDir, R(0.16), 0.003), accent: 1 },
+    { w: 2.5, s: ring(P([0, -1.22, 0]), Y, R(0.56), 0.003), accent: 0.65 },
+    // instrumented points around the cell
+    { w: 1, s: nodeSampler(P([-1.9, -2.0, 1.4]), R(0.09)), accent: 1 },
+    { w: 1, s: nodeSampler(P([-1.5, -2.0, -1.8]), R(0.09)), accent: 1 },
+    { w: 1, s: nodeSampler(P([3.5, -2.0, -1.5]), R(0.09)), accent: 1 },
+    { w: 1, s: nodeSampler(P([2.62, -0.98, 0.1]), R(0.08)), accent: 1 },
   ];
   return { nodes, structure };
 }

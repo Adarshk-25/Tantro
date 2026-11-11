@@ -1,10 +1,10 @@
 import { Hero } from '@/components/hero/Hero';
 import { ChapterRail } from '@/components/nav/ChapterRail';
-import { PhysicalWorld } from '@/components/chapters/PhysicalWorld';
-import { IndustrialNetworkVisualization } from '@/components/chapters/IndustrialNetworkVisualization';
-import { IntelligenceSimulator } from '@/components/chapters/IntelligenceSimulator';
+import { MachineStoryExplorer } from '@/components/chapters/MachineStoryExplorer';
+import { ConnectivityExplorer } from '@/components/chapters/ConnectivityExplorer';
+import { DecisionLab } from '@/components/chapters/DecisionLab';
 import { CapabilityExplorer } from '@/components/chapters/CapabilityExplorer';
-import { RoboticsExplorer } from '@/components/chapters/RoboticsExplorer';
+import { PhysicalAIExplorer } from '@/components/chapters/PhysicalAIExplorer';
 import { EngineeringWork } from '@/components/chapters/EngineeringWork';
 import { ContactForm } from '@/components/chapters/ContactForm';
 import { site } from '@/content/site';
@@ -26,11 +26,11 @@ export default function Home() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <ChapterRail />
       <Hero />
-      <PhysicalWorld />
-      <IndustrialNetworkVisualization />
-      <IntelligenceSimulator />
+      <MachineStoryExplorer />
+      <ConnectivityExplorer />
+      <DecisionLab />
       <CapabilityExplorer />
-      <RoboticsExplorer />
+      <PhysicalAIExplorer />
       <EngineeringWork />
       <ContactForm />
     </>

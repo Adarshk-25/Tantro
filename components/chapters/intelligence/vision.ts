@@ -22,9 +22,9 @@ export function drawVision(ctx: CanvasRenderingContext2D, w: number, h: number, 
   }
 
   // the part: a machined bracket, centred in the camera frame
-  const pw = Math.min(w * 0.46, h * 0.95);
+  const pw = Math.min(w * (w > 520 ? 0.4 : 0.6), h * 0.95);
   const ph = pw * 0.56;
-  let px = w / 2 - pw / 2;
+  let px = (w > 520 ? w * 0.42 : w / 2) - pw / 2;
   let py = h * 0.52 - ph / 2;
   if (stage === 3) {
     // diverted: the part slides out of the inspection frame
@@ -78,7 +78,7 @@ export function drawVision(ctx: CanvasRenderingContext2D, w: number, h: number, 
   ctx.globalAlpha = 1;
 
   // camera frame corners
-  const fx = w / 2 - pw * 0.62;
+  const fx = px + pw / 2 - pw * 0.62;
   const fy = h * 0.52 - ph * 0.85;
   const fw = pw * 1.24;
   const fh = ph * 1.7;
@@ -141,6 +141,22 @@ export function drawVision(ctx: CanvasRenderingContext2D, w: number, h: number, 
     monoText(ctx, 'SCRATCH · 0.93', bx + 6, by - 5, '#0b0c0d');
   }
 
+  if (stage >= 2 && w > 520) {
+    // class probabilities from the classifier head
+    const bx = w - pad - 150;
+    const by = h * 0.3;
+    monoText(ctx, 'p(class | image)', bx, by - 12, C.mid);
+    ([['scratch', 0.93], ['dent', 0.04], ['ok', 0.03]] as [string, number][]).forEach(([name, p], i) => {
+      const y = by + i * 30;
+      monoText(ctx, name, bx, y + 10, i === 0 ? C.hi : C.mid);
+      monoText(ctx, p.toFixed(2), bx + 150, y + 10, i === 0 ? C.signal : C.mid, 'right');
+      ctx.fillStyle = 'rgba(236,232,224,0.1)';
+      ctx.fillRect(bx, y + 15, 150, 4);
+      ctx.fillStyle = i === 0 ? C.signal : 'rgba(236,232,224,0.6)';
+      ctx.fillRect(bx, y + 15, 150 * p, 4);
+    });
+    monoText(ctx, 'τ = 0.80 → REJECT', bx, by + 104, C.signal);
+  }
   if (stage === 3) {
     monoText(ctx, 'DIVERTED → REVIEW LANE', w - pad, h - pad, C.signal, 'right');
   }

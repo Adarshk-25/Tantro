@@ -51,18 +51,20 @@ lib/
   contact/validate.ts   validation shared by browser and server
 ```
 
-### Homepage chapters
+### Homepage chapters (v2)
 
-| # | Chapter | Component | Technique |
+Each chapter is a viewport-height story panel (`ChapterTransition`). It has a compact header and an interactive stage that fills the rest of the screen, so the heading, the interaction and the explanation stay visible together. Headings scale with viewport width *and* height (`.t-h1`, `.t-h2`), so they don't clip on short laptop screens.
+
+| # | Chapter | Component | What the visitor does |
 | --- | --- | --- | --- |
-| 00 | Hero | `Hero`, `ParticleMorphSystem` | Up to 18k GPU particles morph in a shader between four procedural states: robot arm → layered OT network → neural lattice → integrated loop. Scroll-linked, pointer pressure field. |
-| 01 | Every machine has a story | `PhysicalWorld` | Procedural isometric line drawing; accessible hotspots show illustrative live signals. |
-| 02 | Make systems speak | `IndustrialNetworkVisualization` | Architecture modelled on ISA-95 layers; pick a field asset to trace its route with protocols and moving packets. Separate desktop and phone compositions. |
-| 03 | From data to decisions | `IntelligenceSimulator` | Three canvas simulations (anomaly, vision, line bottleneck as a discrete-event sim), each run Input → Processing → Insight → Action. |
-| 04 | One engineering mindset | `CapabilityExplorer` | Keyboard-accessible tablist; central point cloud morphs between six forms. |
-| 05 | The next frontier is physical | `RoboticsExplorer` | Lazy-loaded R3F humanoid built from particles, with layer overlays for perception, reasoning, planning, motion and supervision. |
-| 06 | Ideas become valuable when they work | `EngineeringWork` | Ledger with status filters; original SVG figures. |
-| 07 | Bring us the problem | `ContactForm` | Validated form → `/api/contact`. |
+| 00 | Hero | `Hero`, `ParticleMorphSystem` | Scrolls through a particle machine (up to 60k GPU particles) that becomes a layered OT network, then a neural lattice, then an integrated system. A labelled four-state progress readout tracks the transformation. |
+| 01 | Every machine has a story | `MachineStoryExplorer` | Explores a shaded isometric production cell with seven assets (`lib/iso.ts`). Numbered hotspots, an asset selector and a guided tour each open a four-part story: problem → data observed (with trend) → risk → action. |
+| 02 | Make systems speak | `ConnectivityExplorer`, `viz/ArchitectureDiagram` | Switches between eight integration scenarios with security zones, animated data paths, protocol tracing and a phone layout. |
+| 03 | From data to decisions | `DecisionLab`, `lab/charts.ts` | Works through 13 industrial use cases in six steps (context → signals → model logic → insight → action → impact), each with a formula cue and a purpose-built chart. Autoplay runs through every use case. |
+| 04 | One engineering mindset | `CapabilityExplorer`, `three/MorphCloud` | Uses a discipline list, a reading zone (scope, technologies, problem, outcome, value) and a GPU point-cloud figure. |
+| 05 | The next frontier is physical | `PhysicalAIExplorer`, `robotics/buildHumanoid.ts`, `robotics/HumanoidScene.tsx` | Explores an original articulated humanoid with per-stage 3D overlays and projected labels. The stage selector and the figure are always on screen together. |
+| 06 | Ideas become valuable when they work | `EngineeringWork` | Filters cards by status, sees previews and opens details in an accessible modal (`<dialog>`). |
+| 07 | Bring us the problem | `ContactForm` | Follows a "what happens next" sequence and submits a validated form to `/api/contact`. |
 
 ### Performance and accessibility
 
@@ -76,6 +78,7 @@ lib/
 
 ## Content integrity — before launch
 
+- `content/contact.ts`: confirm the promised response time ("within two working days").
 - `content/work.ts`: every entry is a **draft**. Confirm the status (demonstration / concept / research) and the wording. Never list client work without written approval.
 - `content/site.ts` and `content/company.ts`: replace the `[bracketed]` placeholders (registered name, city, founders, year).
 - `app/opengraph-image.tsx` generates a placeholder OG image. Replace it with a designed one.

@@ -23,6 +23,7 @@ export function Hero() {
   const meterRef = useRef<HTMLSpanElement>(null);
   const counterRef = useRef<HTMLSpanElement>(null);
   const cueRef = useRef<HTMLDivElement>(null);
+  const stepRefs = useRef<(HTMLLIElement | null)[]>([]);
   const store = useRef<MorphStore>({ morph: 0, pointer: { x: 0, y: 0, active: false } });
 
   const reduced = useReducedMotion();
@@ -68,7 +69,13 @@ export function Hero() {
       el.setAttribute('aria-hidden', o < 0.5 ? 'true' : 'false');
     });
     if (meterRef.current) meterRef.current.style.transform = `scaleX(${morph / 3})`;
-    if (counterRef.current) counterRef.current.textContent = `S${Math.round(morph) + 1}`;
+    const step = Math.round(morph);
+    if (counterRef.current) counterRef.current.textContent = `S${step + 1} / 04`;
+    stepRefs.current.forEach((el, k) => {
+      if (!el) return;
+      el.classList.toggle('text-hi', k === step);
+      el.classList.toggle('text-lo', k !== step);
+    });
     if (cueRef.current) cueRef.current.style.opacity = String(1 - clamp(p / 0.05));
   }, []);
 
@@ -126,7 +133,7 @@ export function Hero() {
           <div className="relative mt-auto">
             {/* Opening headline */}
             <div ref={headRef} className="max-w-[46rem] will-change-transform">
-              <h1 id="hero-title" className="t-display text-[clamp(2.5rem,1.3rem+4.6vw,5.9rem)] text-hi">
+              <h1 id="hero-title" className="t-h1 text-hi">
                 <span className="block">{hero.headline[0]}</span>
                 <span className="block text-mid">{hero.headline[1]}</span>
               </h1>
@@ -158,33 +165,41 @@ export function Hero() {
                   <p className="t-mono text-signal">
                     {s.code} / 04 — {s.title}
                   </p>
-                  <p className="t-display-condensed mt-3 text-[clamp(1.7rem,1.2rem+2vw,3rem)] text-hi">{s.line}</p>
+                  <p className="t-h3 mt-3 text-[clamp(1.5rem,1.1rem+1.4vw,2.4rem)] text-hi">{s.line}</p>
                 </li>
               ))}
             </ol>
           </div>
 
-          {/* Readout */}
-          <div className="mt-10 flex items-end justify-between gap-6 text-mid">
-            <div ref={cueRef} className="t-mono flex items-center gap-3">
-              <span className="relative block h-8 w-px overflow-hidden bg-ink-600" aria-hidden="true">
-                <span className="blink absolute inset-x-0 top-0 h-3 bg-signal" />
+          {/* Readout: where you are in the transformation */}
+          <div className="mt-8 flex items-end justify-between gap-6 text-mid">
+            <div ref={cueRef} className="t-label flex items-center gap-3">
+              <span className="relative flex h-9 w-6 justify-center rounded-full border border-hi/30" aria-hidden="true">
+                <span className="blink mt-1.5 block h-2 w-0.5 rounded bg-signal" />
               </span>
               Scroll to transform
             </div>
-            <div className="t-mono flex min-w-[11rem] items-center gap-3" aria-hidden="true">
-              <span ref={counterRef} className="text-hi">
-                S1
-              </span>
-              <span className="relative h-px flex-1 bg-ink-600">
-                <span
-                  ref={meterRef}
-                  className="absolute inset-0 origin-left bg-signal"
-                  style={{ transform: 'scaleX(0)' }}
-                />
-              </span>
-              <span>S4</span>
+            <div className="hidden w-[min(30rem,42vw)] lg:block" aria-hidden="true">
+              <div className="relative h-px bg-hi/15">
+                <span ref={meterRef} className="absolute inset-0 origin-left bg-signal" style={{ transform: 'scaleX(0)' }} />
+              </div>
+              <ol className="t-label mt-3 grid grid-cols-4">
+                {hero.states.map((s, k) => (
+                  <li
+                    key={s.code}
+                    ref={(el) => {
+                      stepRefs.current[k] = el;
+                    }}
+                    className={`transition-colors duration-500 ${k === 0 ? 'text-hi' : 'text-lo'} ${k === 3 ? 'text-right' : k > 0 ? 'text-center' : ''}`}
+                  >
+                    {s.title}
+                  </li>
+                ))}
+              </ol>
             </div>
+            <span ref={counterRef} className="t-label text-hi lg:hidden" aria-hidden="true">
+              S1 / 04
+            </span>
           </div>
         </div>
       </div>
