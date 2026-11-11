@@ -109,6 +109,11 @@ function World({
     const budget = Math.min(TIER_CAP[tier], Math.round(96000 * Math.pow(0.0033 / spacing, 2)));
     const dist = 1.05 / Math.tan(((FOV / 2) * Math.PI) / 180);
     const dotPx = 1.85;
+    // If this GPU cannot compile a shader, show the static figure instead of an empty stage.
+    gl.debug.onShaderError = (ctx, program, vs, fs) => {
+      console.error('Humanoid shader failed to compile', ctx.getProgramInfoLog(program), ctx.getShaderInfoLog(vs), ctx.getShaderInfoLog(fs));
+      if (!cancelled) onReady(0);
+    };
     loadHumanoidBuffer()
       .then((buf) => {
         if (cancelled) return;

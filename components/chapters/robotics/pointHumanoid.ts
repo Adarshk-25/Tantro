@@ -73,21 +73,22 @@ const dotVertex = /* glsl */ `
   void main() {
     vec4 world = modelMatrix * vec4(position, 1.0);
     vec4 mv = viewMatrix * world;
-    // guard: a zero normal would give NaN on some GPUs and blank the dot
-    vec3 nm = normalMatrix * normal;
-    vec3 n = dot(nm, nm) > 1e-6 ? normalize(nm) : vec3(0.0, 0.0, 1.0);
+    // Branch-free and NaN-safe: a zero normal must never blank a dot on any GPU.
+    vec3 n = normalize(normalMatrix * normal + vec3(0.0, 0.0, 1e-4));
     vec3 v = normalize(-mv.xyz);
     float facing = dot(n, v);
     vFacing = facing;
     vec3 L = normalize(vec3(0.35, 0.65, 0.68));
     vec3 L2 = normalize(vec3(-0.7, 0.1, -0.2));
     vShade = 0.2 + 0.95 * max(dot(n, L), 0.0) + 0.14 * max(dot(n, L2), 0.0);
-    vRim = pow(1.0 - max(facing, 0.0), 2.2);
+    float rim = 1.0 - clamp(facing, 0.0, 1.0);
+    vRim = rim * rim;
     vAccent = aAccent;
     vY = world.y;
-    gl_Position = projectionMatrix * mv;
     gl_PointSize = max(1.0, uSize * uPixelRatio / -mv.z);
-    if (facing < -0.15) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+    // Occlusion comes from culling dots on the far side of each body part, not from the depth buffer,
+    // so the figure draws the same way on every GPU and driver.
+    gl_Position = facing < 0.0 ? vec4(2.0, 2.0, 2.0, 1.0) : projectionMatrix * mv;
   }
 `;
 
@@ -108,7 +109,6 @@ const dotFragment = /* glsl */ `
     vec2 c = gl_PointCoord - 0.5;
     float r = length(c);
     if (r > 0.5) discard;
-    // opaque, depth-tested dots: they occlude each other on every GPU
     float dotMask = 1.0 - smoothstep(0.36, 0.5, r);
     vec3 col = uBase * vShade + uCool * vRim * 0.4;
     col = mix(col, uHighlightColor * (0.7 + 0.6 * vShade), uHighlight * 0.75);
@@ -214,8 +214,10 @@ export function buildPointHumanoid(buf: ArrayBuffer, budget: number, dotSize: nu
     const mat = new THREE.ShaderMaterial({
       vertexShader: dotVertex,
       fragmentShader: dotFragment,
-      transparent: false,
-      depthWrite: true,
+      // Same pipeline state as the floor and shelf points, which render on every GPU tested:
+      // blended, no depth writes. An earlier opaque depth-writing variant vanished on some hardware.
+      transparent: true,
+      depthWrite: false,
       depthTest: true,
       uniforms: {
         uSize: { value: dotSize },
